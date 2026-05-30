@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Netflix Clone - Watch TV Shows &amp; Movies Online</title>
+  <meta name="description" content="Discover popular movies, TV shows, and original series on this high-fidelity Netflix Clone. Powered by TMDB API.">
+
+  <!-- Favicon -->
+  <link rel="shortcut icon" href="https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico" type="image/x-icon">
+
+  <!-- Preconnects: establish TCP/TLS early for every external origin -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
+  <link rel="dns-prefetch" href="https://api.themoviedb.org">
+
+  <!-- Preload Critical Icon Fonts early in the lifecycle to avoid load swap latency -->
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+
+
+
+  <!--
+    CRITICAL CSS (inline) — above-the-fold styles only.
+    Eliminates render-blocking /style.css for initial paint.
+    The full stylesheet is loaded asynchronously below.
+  -->
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{background:#141414;color:#fff;font-family:'Outfit',system-ui,sans-serif;
+         overflow-x:hidden;-webkit-font-smoothing:antialiased}
+    .hidden{display:none!important}
+    a{color:#fff;text-decoration:none}
+    button{cursor:pointer;border:none;background:none;font-family:inherit;outline:none}
+    /* Navbar — visible immediately */
+    .navbar{position:fixed;top:0;left:0;right:0;height:68px;display:flex;
+            justify-content:space-between;align-items:center;padding:0 4%;
+            z-index:1000;background:linear-gradient(to bottom,rgba(0,0,0,.7) 0%,rgba(0,0,0,0) 100%);
+            transition:background-color .3s ease}
+    .navbar.scrolled{background-color:#141414}
+    .navbar-left{display:flex;align-items:center;gap:40px}
+    .logo-img{height:25px;display:block}
+    /* Hero — prevents layout shift on first paint */
+    .hero-banner{position:relative;height:85vh;width:100%;background-size:cover;
+                 background-position:center 20%;display:flex;align-items:center;padding:0 4%}
+    .hero-lcp-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+                  object-position:center 20%;z-index:0;pointer-events:none}
+    .hero-content{position:relative;z-index:3;max-width:650px;display:flex;
+                  flex-direction:column;gap:15px;margin-top:60px}
+    .hero-title{font-size:4rem;font-weight:800;line-height:1.1;text-shadow:2px 2px 4px rgba(0,0,0,.6)}
+    /* Rows placeholder — prevents CLS when rows inject */
+    .rows-container{padding:0 4% 50px;margin-top:-30px;position:relative;z-index:5;
+                    display:flex;flex-direction:column;gap:40px}
+    /* Card aspect-ratio reserve — prevents layout shift as images load */
+    .movie-card{aspect-ratio:16/9;background:#181818}
+    .netflix-originals-row .movie-card{aspect-ratio:2/3}
+    .top-10-card{aspect-ratio:unset}
+  </style>
+
+  <!--
+    style.css loaded SYNCHRONOUSLY (render-blocking is acceptable here).
+    The 80ms cost is worth avoiding the CLS penalty from deferred CSS.
+    Deferring style.css caused CLS 0.491 because styles change mid-render.
+  -->
+  <!-- High-Performance Asynchronous Production CSS and Font loading (Render-Blocking Free) -->
+  <link rel="preload" as="style" href="style.min.css">
+  <link rel="stylesheet" href="style.min.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="style.min.css"></noscript>
+
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Outfit:wght@300;400;500;600;700;800&amp;display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Outfit:wght@300;400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Outfit:wght@300;400;500;600;700;800&amp;display=swap"></noscript>
+
+  <!--
+    FontAwesome — non-blocking.
+    font-display:swap is injected via a <style> override below so
+    icon fonts show a fallback instead of going invisible while loading.
+  -->
+  <style>
+    /* Force font-display:swap on all FontAwesome icon fonts to fix Lighthouse
+       "Font display" warning — icons show ▯ briefly instead of blank space. */
+    @font-face{
+      font-family:'Font Awesome 6 Free';
+      font-display:swap;
+      src:url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2') format('woff2');
+      font-weight:900;font-style:normal
+    }
+    @font-face{
+      font-family:'Font Awesome 6 Free';
+      font-display:swap;
+      src:url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-regular-400.woff2') format('woff2');
+      font-weight:400;font-style:normal
+    }
+    @font-face{
+      font-family:'Font Awesome 6 Brands';
+      font-display:swap;
+      src:url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-brands-400.woff2') format('woff2');
+      font-weight:400;font-style:normal
+    }
+  </style>
+  <link rel="preload" as="style"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"
+        onload="this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+          integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+          crossorigin="anonymous" referrerpolicy="no-referrer">
+  </noscript>
+</head>
+
+<body>
+
+  <!-- Navigation Bar -->
+  <header id="navbar" class="navbar">
+    <div class="navbar-left">
+      <!-- Netflix Logo -->
+      <a href="#" class="logo" id="nav-logo" aria-label="Netflix">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" alt="Netflix Logo" class="logo-img" width="92" height="25">
+      </a>
+      
+      <nav class="nav-links">
+        <a href="#" class="nav-link active" id="link-home">Home</a>
+        <a href="#" class="nav-link" id="link-tv">TV Shows</a>
+        <a href="#" class="nav-link" id="link-movies">Movies</a>
+        <a href="#" class="nav-link" id="link-latest">New & Popular</a>
+        <a href="#" class="nav-link" id="link-mylist">My List</a>
+      </nav>
+    </div>
+
+    <div class="navbar-right">
+      <!-- Expandable Search Box -->
+      <div class="search-box-container" id="search-box-container">
+        <button class="search-btn" id="search-btn" aria-label="Search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+        <input type="text" class="search-input" id="search-input" placeholder="Titles, people, genres..." aria-label="Search Movies">
+        <button class="search-clear-btn" id="search-clear-btn" aria-label="Clear Search">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Kids Section -->
+      <span class="nav-item kids-label" id="kids-label" tabindex="0" role="button" aria-label="Switch to Kids Mode">Kids</span>
+
+      <!-- Hamburger Menu Button (mobile only) -->
+      <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu" aria-expanded="false">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+
+      <!-- Notification Bell -->
+      <div class="notification-container" id="notification-container">
+        <button class="nav-icon-btn" id="notification-btn" aria-label="Notifications">
+          <i class="fa-regular fa-bell"></i>
+          <span class="notification-badge" id="notification-badge">3</span>
+        </button>
+        <!-- Dropdown notifications -->
+        <div class="notification-dropdown" id="notification-dropdown">
+          <div class="notification-item" data-id="66732" data-type="tv">
+            <img src="https://image.tmdb.org/t/p/w92/or06cmd60Djr3tG6vsi6048cyqs.jpg" alt="Stranger Things poster" width="36" height="54">
+            <div class="notification-info">
+              <p class="notification-text">New Release: <strong>Stranger Things Season 5</strong> is out now.</p>
+              <span class="notification-time">2 hours ago</span>
+            </div>
+          </div>
+          <div class="notification-item" data-id="119051" data-type="tv">
+            <img src="https://image.tmdb.org/t/p/w92/4Lt798835TsdT527712CplJ6s64.jpg" alt="Wednesday poster" width="36" height="54">
+            <div class="notification-info">
+              <p class="notification-text">Trending: <strong>Wednesday</strong> is trending today.</p>
+              <span class="notification-time">1 day ago</span>
+            </div>
+          </div>
+          <div class="notification-item" data-id="27205" data-type="movie">
+            <img src="https://image.tmdb.org/t/p/w92/5kPv262zL4Z7n3RLZgnTA8Cc4gc.jpg" alt="Inception poster" width="36" height="54">
+            <div class="notification-info">
+              <p class="notification-text">Added to My List: <strong>Inception</strong> is now available.</p>
+              <span class="notification-time">2 days ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Section -->
+      <div class="profile-container" id="profile-container">
+        <div class="profile-trigger" id="profile-trigger" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" aria-label="Profile Menu">
+          <img class="profile-avatar" src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt="User Profile Avatar" width="32" height="32">
+          <i class="fa-solid fa-caret-down caret"></i>
+        </div>
+        
+        <div class="profile-dropdown" id="profile-dropdown">
+          <div class="profile-dropdown-arrow"></div>
+          <ul class="profile-list">
+            <li class="profile-item"><a href="#" id="profile-user1"><img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt="Avatar 1" width="32" height="32"> <span>User 1</span></a></li>
+            <li class="profile-item"><a href="#" id="profile-kids"><img src="data:image/svg+xml;utf8,<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><rect width='100' height='100' rx='10' fill='%23e9a716'/><circle cx='32' cy='38' r='6' fill='white'/><circle cx='68' cy='38' r='6' fill='white'/><path d='M 30,55 A 25,25 0 0,0 70,55' fill='none' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>" alt="Avatar 2" width="32" height="32"> <span>Kids</span></a></li>
+            <li class="profile-item"><a href="#"><i class="fa-solid fa-pencil"></i> <span>Manage Profiles</span></a></li>
+            <li class="profile-item divider"></li>
+            <li class="profile-item"><a href="#"><i class="fa-solid fa-user"></i> <span>Account</span></a></li>
+            <li class="profile-item"><a href="#"><i class="fa-regular fa-circle-question"></i> <span>Help Center</span></a></li>
+            <li class="profile-item divider"></li>
+            <li class="profile-item"><a href="#" id="sign-out-btn"><span>Sign out of Netflix</span></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Navigation Drawer -->
+  <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay"></div>
+    <nav class="mobile-menu-panel" id="mobile-menu-panel">
+      <button class="mobile-menu-close" id="mobile-menu-close" aria-label="Close menu">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="mobile-menu-logo">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" alt="Netflix" width="81" height="22">
+      </div>
+      <ul class="mobile-nav-links">
+        <li><a href="#" class="mobile-nav-link" id="m-link-home"><i class="fa-solid fa-house"></i> Home</a></li>
+        <li><a href="#" class="mobile-nav-link" id="m-link-tv"><i class="fa-solid fa-tv"></i> TV Shows</a></li>
+        <li><a href="#" class="mobile-nav-link" id="m-link-movies"><i class="fa-solid fa-film"></i> Movies</a></li>
+        <li><a href="#" class="mobile-nav-link" id="m-link-latest"><i class="fa-solid fa-fire"></i> New &amp; Popular</a></li>
+        <li><a href="#" class="mobile-nav-link" id="m-link-mylist"><i class="fa-solid fa-list"></i> My List</a></li>
+        <li><a href="#" class="mobile-nav-link" id="m-link-kids"><i class="fa-solid fa-child"></i> Kids</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <!-- Main Feed Container -->
+  <main id="main-content">
+    
+    <!-- Hero Banner Section (Dynamically Loaded from TMDB) -->
+    <section id="hero-banner" class="hero-banner">
+      <!--
+        LCP Image Placeholder - transparent pixel spacer.
+        Swapped dynamically by app.js when fetching trending resources.
+      -->
+      <img id="hero-lcp-img"
+           class="hero-lcp-img"
+           src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+           alt="Hero backdrop"
+           fetchpriority="high"
+           decoding="async"
+           width="1280"
+           height="720"
+           style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;">
+      <div class="hero-bg-overlay"></div>
+      <div class="hero-bottom-fade"></div>
+      <div class="hero-content">
+        <div class="hero-badge" id="hero-badge">
+          <svg class="n-logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="height: 22px; width: 14px; margin-right: 4px;">
+            <path d="M20 0h20v80H20z" fill="#B20710"/>
+            <path d="M60 0h20v100H60z" fill="#B20710"/>
+            <path d="M20 0l40 100H40L20 0z" fill="#E50914"/>
+          </svg>
+          <span>ORIGINAL SERIES</span>
+        </div>
+        <h1 class="hero-title" id="hero-title">Stranger Things</h1>
+        <div class="hero-meta">
+          <span class="hero-match" id="hero-match">98% Match</span>
+          <span class="hero-year" id="hero-year">2022</span>
+          <span class="hero-age-rating">16+</span>
+          <span class="hero-duration" id="hero-duration">4 Seasons</span>
+        </div>
+        <p class="hero-description" id="hero-description">
+          When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces and one strange little girl.
+        </p>
+        <div class="hero-buttons">
+          <button class="hero-btn play-btn" id="hero-play-btn" data-id="66732" data-type="tv" aria-label="Play Stranger Things">
+            <i class="fa-solid fa-play"></i> Play
+          </button>
+          <button class="hero-btn info-btn" id="hero-info-btn" data-id="66732" data-type="tv" aria-label="More Info about Stranger Things">
+            <i class="fa-solid fa-circle-info"></i> More Info
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Movies Row Showcase Layout (Dynamically Filled via JS) -->
+    <section class="rows-container" id="rows-container">
+      <!-- Rows will be injected here: -->
+      <!-- Netflix Originals -->
+      <!-- Trending Now -->
+      <!-- Top Rated -->
+      <!-- Action & Adventure -->
+      <!-- Comedies -->
+      <!-- Horrors -->
+      <!-- Documentaries -->
+    </section>
+
+  </main>
+
+  <!-- Search Grid View (Hidden by default, displayed when searching) -->
+  <section id="search-grid-container" class="search-grid-container hidden">
+    <div class="search-header">
+      <h2 id="search-title">Search Results for: "<span id="search-query-text"></span>"</h2>
+    </div>
+    <div class="search-results-grid" id="search-results-grid">
+      <!-- Movie cards injected dynamically -->
+    </div>
+  </section>
+
+  <!-- Detailed Movie Overlay Modal -->
+  <div id="movie-modal" class="movie-modal hidden">
+    <div class="modal-backdrop" id="modal-backdrop-trigger"></div>
+    <div class="modal-content">
+      <!-- Close Button -->
+      <button class="modal-close-btn" id="modal-close-btn" aria-label="Close details">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <!-- Video Player or Backdrop Container -->
+      <div class="modal-video-container">
+        <!-- Live Video Iframe (dynamic YouTube player) or Fallback High-res Image -->
+        <div id="modal-video-player" class="modal-video-player"></div>
+        <img id="modal-backdrop-img" class="modal-backdrop-img" src="" alt="Backdrop image" width="1280" height="720">
+        <div class="modal-video-fade"></div>
+        
+        <!-- Hover Playback Title Info Overlay -->
+        <div class="modal-video-info-overlay">
+          <h2 class="modal-movie-title" id="modal-movie-title">Movie Title</h2>
+          <div class="modal-action-row">
+            <button class="modal-play-btn" id="modal-play-btn">
+              <i class="fa-solid fa-play"></i> Play
+            </button>
+            <button class="modal-round-btn tooltip" id="modal-add-list-btn" aria-label="Add to My List">
+              <i class="fa-solid fa-plus"></i>
+              <span class="tooltiptext">Add to My List</span>
+            </button>
+            <button class="modal-round-btn tooltip" id="modal-like-btn" aria-label="Like title">
+              <i class="fa-regular fa-thumbs-up"></i>
+              <span class="tooltiptext">Like</span>
+            </button>
+            <button class="modal-round-btn sound-btn tooltip" id="modal-mute-btn" aria-label="Toggle mute">
+              <i class="fa-solid fa-volume-xmark"></i>
+              <span class="tooltiptext">Unmute</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Movie Details Panel -->
+      <div class="modal-details-body">
+        <div class="modal-details-left">
+          <div class="modal-info-meta">
+            <span class="match-score" id="modal-match">95% Match</span>
+            <span class="year" id="modal-year">2023</span>
+            <span class="age-limit" id="modal-age-rating">13+</span>
+            <span class="runtime" id="modal-duration">2h 15m</span>
+            <span class="quality-tag">HD</span>
+          </div>
+          
+          <p class="modal-overview" id="modal-overview">
+            This is where the high-quality, comprehensive movie synopsis goes, highlighting characters, themes, and plot points to hook the user.
+          </p>
+        </div>
+
+        <div class="modal-details-right">
+          <div class="detail-crew-item">
+            <span class="label">Cast:</span> <span class="val" id="modal-cast">Actor A, Actor B, Actor C</span>
+          </div>
+          <div class="detail-crew-item">
+            <span class="label">Genres:</span> <span class="val" id="modal-genres">Sci-Fi, Action, Thriller</span>
+          </div>
+          <div class="detail-crew-item">
+            <span class="label">This movie is:</span> <span class="val" id="modal-vibe">Suspenseful, Exciting</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- More Like This / Recommended Row -->
+      <div class="modal-recommendations-section">
+        <h3>More Like This</h3>
+        <div class="recommendations-grid" id="modal-recommendations-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Premium Netflix Footer -->
+  <footer class="netflix-footer">
+    <div class="footer-socials">
+      <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+      <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+      <a href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
+      <a href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+    </div>
+    
+    <div class="footer-links-grid">
+      <ul class="footer-column">
+        <li><a href="#">Audio Description</a></li>
+        <li><a href="#">Investor Relations</a></li>
+        <li><a href="#">Legal Notices</a></li>
+      </ul>
+      <ul class="footer-column">
+        <li><a href="#">Help Center</a></li>
+        <li><a href="#">Jobs</a></li>
+        <li><a href="#">Privacy</a></li>
+      </ul>
+      <ul class="footer-column">
+        <li><a href="#">Gift Cards</a></li>
+        <li><a href="#">Terms of Use</a></li>
+        <li><a href="#">Corporate Information</a></li>
+      </ul>
+      <ul class="footer-column">
+        <li><a href="#">Media Center</a></li>
+        <li><a href="#">Shop</a></li>
+        <li><a href="#">Contact Us</a></li>
+      </ul>
+    </div>
+    
+    <div class="footer-service-btn-container">
+      <button class="footer-service-btn">Service Code</button>
+    </div>
+    
+    <div class="footer-copyright">
+      &copy; 1997-2026 Netflix, Inc. Built for Pair Programming Clone Project.
+    </div>
+  </footer>
+
+  <!-- Toast Notification -->
+  <div id="toast-notification" class="toast-notification" aria-live="polite">
+    <i class="fa-solid fa-circle-info"></i>
+    <span id="toast-message">Message</span>
+  </div>
+
+  <!-- Scripts -->
+  <!-- Load API key config before main app (config.js is in .gitignore) -->
+  <script src="config.js" defer></script>
+  <script src="app.min.js" defer></script>
+</body>
+</html>

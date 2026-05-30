@@ -1,0 +1,23 @@
+{
+  "name": "netflix-clone",
+  "version": "1.0.0",
+  "description": "Production-grade, highly optimized Netflix Clone",
+  "main": "app.js",
+  "scripts": {
+    "minify-css": "npx clean-css-cli style.css -o style.min.css",
+    "minify-js": "npx terser app.js -o app.min.js --compress --mangle",
+    "build": "npm run minify-css && npm run minify-js"
+  },
+  "devDependencies": {
+    "clean-css-cli": "^5.6.3",
+    "terser": "^5.31.1"
+  },
+  "keywords": [
+    "netflix",
+    "clone",
+    "lighthouse",
+    "optimized"
+  ],
+  "author": "Antigravity Pair Programmer",
+  "license": "MIT"
+}
