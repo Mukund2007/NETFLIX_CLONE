@@ -1,6 +1,6 @@
 # <img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" alt="Netflix Logo" width="160" height="40" valign="middle"> Netflix Clone (Serverless Proxy Edition)
 
-[![Netlify Status](https://img.shields.io/netlify/nettflix-clone-mukund?style=for-the-badge&logo=netlify)](https://app.netlify.com/sites/nettflix-clone-mukund/deploys)
+[![Netlify Status](https://img.shields.io/badge/Netlify-Deployed-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)](https://app.netlify.com/sites/nettflix-clone-mukund/deploys)
 [![Demo Site](https://img.shields.io/badge/Live%20Demo-Netlify-red?style=for-the-badge&logo=netlify&logoColor=white)](https://nettflix-clone-mukund.netlify.app)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-Repo-black?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Mukund2007/NETFLIX_CLONE)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
@@ -14,7 +14,7 @@ To address the security vulnerability of exposing the private TMDB API key to th
 ## 📸 Interface Preview
 
 <div align="center">
-  <img src="https://images.unsplash.com/photo-1574375927938-d5a98e8edd86?q=80&w=800&auto=format&fit=crop" alt="Netflix Mockup" width="550" style="border-radius: 8px;">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/f/ff/Netflix-new-icon.png" alt="Netflix Mockup" width="180">
   <p><i>Premium dark-mode layouts, micro-interactive components, and responsive typography designed to replicate the original desktop & mobile Netflix streams.</i></p>
 </div>
 
