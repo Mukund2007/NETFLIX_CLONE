@@ -1,7 +1,7 @@
 {
   "name": "netflix-clone",
   "version": "1.0.0",
-  "description": "Production-grade, highly optimized Netflix Clone",
+  "description": "Production-grade, highly optimized Netflix Clone with Netlify Serverless Functions",
   "main": "app.js",
   "scripts": {
     "minify-css": "npx clean-css-cli style.css -o style.min.css",
@@ -15,7 +15,8 @@
   "keywords": [
     "netflix",
     "clone",
-    "lighthouse",
+    "serverless",
+    "functions",
     "optimized"
   ],
   "author": "Antigravity Pair Programmer",

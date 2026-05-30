@@ -20,8 +20,6 @@
   <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
 
-
-
   <!--
     CRITICAL CSS (inline) — above-the-fold styles only.
     Eliminates render-blocking /style.css for initial paint.
@@ -60,11 +58,6 @@
     .top-10-card{aspect-ratio:unset}
   </style>
 
-  <!--
-    style.css loaded SYNCHRONOUSLY (render-blocking is acceptable here).
-    The 80ms cost is worth avoiding the CLS penalty from deferred CSS.
-    Deferring style.css caused CLS 0.491 because styles change mid-render.
-  -->
   <!-- High-Performance Asynchronous Production CSS and Font loading (Render-Blocking Free) -->
   <link rel="preload" as="style" href="style.min.css">
   <link rel="stylesheet" href="style.min.css" media="print" onload="this.media='all'">
@@ -284,14 +277,7 @@
 
     <!-- Movies Row Showcase Layout (Dynamically Filled via JS) -->
     <section class="rows-container" id="rows-container">
-      <!-- Rows will be injected here: -->
-      <!-- Netflix Originals -->
-      <!-- Trending Now -->
-      <!-- Top Rated -->
-      <!-- Action & Adventure -->
-      <!-- Comedies -->
-      <!-- Horrors -->
-      <!-- Documentaries -->
+      <!-- Rows will be injected here dynamically -->
     </section>
 
   </main>
@@ -317,7 +303,6 @@
 
       <!-- Video Player or Backdrop Container -->
       <div class="modal-video-container">
-        <!-- Live Video Iframe (dynamic YouTube player) or Fallback High-res Image -->
         <div id="modal-video-player" class="modal-video-player"></div>
         <img id="modal-backdrop-img" class="modal-backdrop-img" src="" alt="Backdrop image" width="1280" height="720">
         <div class="modal-video-fade"></div>
@@ -432,8 +417,7 @@
   </div>
 
   <!-- Scripts -->
-  <!-- Load API key config before main app (config.js is in .gitignore) -->
-  <script src="config.js" defer></script>
+  <!-- Main app script is loaded with defer. No config.js required anymore! -->
   <script src="app.min.js" defer></script>
 </body>
 </html>

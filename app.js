@@ -1,17 +1,10 @@
 /**
- * Netflix Clone - Dynamic Core Engine
- * Integrates with TMDB API to fetch and render premium visual components,
- * search results, detail overlays, trailer playback, and intuitive animations.
- *
- * ⚠️  API key is loaded from config.js (which is listed in .gitignore).
- *     Never hard-code the key here — use window.TMDB_API_KEY set in config.js.
+ * Netflix Clone - Dynamic Core Engine (Serverless Edition)
+ * Integrates with Netlify Serverless Functions to securely proxy all 
+ * TMDB API calls, ensuring the API key is never exposed to the client browser.
  */
 
-// Read API key from config.js (loaded before this script in index.html)
-const API_KEY = window.TMDB_API_KEY || '';
-if (!API_KEY) console.warn('TMDB API key not found. Add it to config.js.');
-
-const BASE_URL = 'https://api.themoviedb.org/3';
+const BASE_URL = '/.netlify/functions/tmdb?path=';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const ORIGIN = window.location.origin || 'http://localhost';
 
@@ -39,7 +32,7 @@ function loadMyListFromStorage() {
 
 /** Persist myPersonalList to localStorage */
 function saveMyListToStorage() {
-  try { localStorage.setItem(LS_LIST_KEY, JSON.stringify(myPersonalList)); } catch { }
+  try { localStorage.setItem(LS_LIST_KEY, JSON.stringify(myPersonalList)); } catch {}
 }
 
 /** Load liked IDs set from localStorage */
@@ -52,7 +45,7 @@ function loadLikesFromStorage() {
 
 /** Persist liked IDs to localStorage */
 function saveLikesToStorage() {
-  try { localStorage.setItem(LS_LIKES_KEY, JSON.stringify([...likedIds])); } catch { }
+  try { localStorage.setItem(LS_LIKES_KEY, JSON.stringify([...likedIds])); } catch {}
 }
 
 // Custom Netflix-style Toast Notification trigger
@@ -81,15 +74,15 @@ let likedIds = loadLikesFromStorage();          // persisted set of liked movie 
 let soundMuted = true;
 let isKidsMode = false;
 
-// API Requests
+// API Requests (API key is injected server-side by the Serverless Function)
 const requests = {
-  fetchRecentReleases: `/movie/now_playing?api_key=${API_KEY}&language=en-US&page=1`,
-  fetchTrendingToday: `/trending/all/day?api_key=${API_KEY}`,
-  fetchActionMovies: `/discover/movie?api_key=${API_KEY}&with_genres=28`,
-  fetchSciFiMovies: `/discover/movie?api_key=${API_KEY}&with_genres=878`,
-  fetchHorrorMovies: `/discover/movie?api_key=${API_KEY}&with_genres=27`,
-  fetchRomanceMovies: `/discover/movie?api_key=${API_KEY}&with_genres=10749`,
-  fetchThrillerMovies: `/discover/movie?api_key=${API_KEY}&with_genres=53`,
+  fetchRecentReleases: '/movie/now_playing?language=en-US&page=1',
+  fetchTrendingToday: '/trending/all/day',
+  fetchActionMovies: '/discover/movie?with_genres=28',
+  fetchSciFiMovies: '/discover/movie?with_genres=878',
+  fetchHorrorMovies: '/discover/movie?with_genres=27',
+  fetchRomanceMovies: '/discover/movie?with_genres=10749',
+  fetchThrillerMovies: '/discover/movie?with_genres=53',
 };
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -106,7 +99,7 @@ async function initApp() {
 }
 
 async function fetchFromTMDB(endpoint) {
-  const url = `${BASE_URL}${endpoint}`;
+  const url = `${BASE_URL}${encodeURIComponent(endpoint)}`;
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -194,9 +187,6 @@ function setupUIEventListeners() {
     }
   });
 
-  // NOTE: modal like button and add-to-list button are wired inside openMovieModal()
-  // using .onclick so they always reference the current movie's ID. No static listener needed.
-
   // Profile sign out button alert (premium mockup trigger)
   const signOutBtn = document.getElementById('sign-out-btn');
   signOutBtn.addEventListener('click', (e) => {
@@ -230,12 +220,12 @@ function setupUIEventListeners() {
 
   // Wire each mobile nav link
   const mobileNavRoutes = [
-    { id: 'm-link-home', hash: '#home' },
-    { id: 'm-link-tv', hash: '#tv' },
+    { id: 'm-link-home',   hash: '#home' },
+    { id: 'm-link-tv',     hash: '#tv' },
     { id: 'm-link-movies', hash: '#movies' },
     { id: 'm-link-latest', hash: '#latest' },
     { id: 'm-link-mylist', hash: '#mylist' },
-    { id: 'm-link-kids', hash: '#kids' },
+    { id: 'm-link-kids',   hash: '#kids' },
   ];
   mobileNavRoutes.forEach(({ id, hash }) => {
     const el = document.getElementById(id);
@@ -303,8 +293,8 @@ async function setupHeroBanner(movies, mediaType = 'movie') {
   const movieSummary = filtered[Math.floor(Math.random() * Math.min(filtered.length, 5))];
   const resolvedType = movieSummary.first_air_date ? 'tv' : (mediaType || 'movie');
 
-  // Fetch full details of the movie/TV show from TMDB
-  const movieDetails = await fetchFromTMDB(`/${resolvedType}/${movieSummary.id}?api_key=${API_KEY}`);
+  // Fetch full details of the movie/TV show from TMDB securely
+  const movieDetails = await fetchFromTMDB(`/${resolvedType}/${movieSummary.id}`);
   const movie = movieDetails || movieSummary;
 
   const heroSection = document.getElementById('hero-banner');
@@ -318,7 +308,6 @@ async function setupHeroBanner(movies, mediaType = 'movie') {
   // Use w1280 instead of /original — same visual quality, ~75% smaller file size
   const backdropUrl = `${IMAGE_BASE_URL}/w1280${movie.backdrop_path}`;
   heroSection.style.backgroundImage = `url('${backdropUrl}')`;
-  // LCP FIX: keep the real <img> src in sync so Lighthouse scores fetchpriority=high
   const lcpImg = document.getElementById('hero-lcp-img');
   if (lcpImg) {
     lcpImg.src = backdropUrl;
@@ -335,7 +324,6 @@ async function setupHeroBanner(movies, mediaType = 'movie') {
   const dateStr = movie.first_air_date || movie.release_date;
   heroYear.innerText = dateStr ? new Date(dateStr).getFullYear() : '2024';
 
-  // Duration: TV shows → episode length or season count; Movies → runtime in minutes
   const isTV = resolvedType === 'tv';
   if (isTV) {
     const epLen = Array.isArray(movie.episode_run_time) && movie.episode_run_time.length > 0
@@ -346,7 +334,6 @@ async function setupHeroBanner(movies, mediaType = 'movie') {
     heroDuration.innerText = movie.runtime ? `${movie.runtime}m` : (movie.number_of_seasons ? `${movie.number_of_seasons} Seasons` : '');
   }
 
-  // Handle hero badge logic
   if (heroBadge) {
     if (isKidsMode) {
       heroBadge.style.display = 'flex';
@@ -362,7 +349,6 @@ async function setupHeroBanner(movies, mediaType = 'movie') {
         <span>ORIGINAL SERIES</span>
       `;
     } else {
-      // Hide badge for movies that have a runtime / are not series
       heroBadge.style.display = 'none';
     }
   }
@@ -401,7 +387,6 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
   const cardsContainer = document.createElement('div');
   cardsContainer.className = 'row-cards-container';
 
-  // Deduplicate by ID
   const seen = new Set();
   const uniqueResults = data.results.filter(m => {
     if (seen.has(m.id)) return false;
@@ -436,8 +421,7 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
     img.alt = movie.title || movie.name || 'Movie poster';
     img.loading = 'lazy';
     img.decoding = 'async';
-    // Explicit dimensions prevent layout shift (CLS) while image loads
-    img.width = isLarge ? 342 : 780;
+    img.width  = isLarge ? 342 : 780;
     img.height = isLarge ? 513 : 439;
     img.onerror = () => { img.src = `https://image.tmdb.org/t/p/w342${movie.poster_path || movie.backdrop_path}`; };
     card.appendChild(img);
@@ -492,13 +476,11 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
 
     card.appendChild(hoverDetails);
 
-    // Click to open modal
     card.addEventListener('click', (e) => {
       if (e.target.closest('.card-action-row')) return;
       openMovieModal(card.getAttribute('data-id'), card.getAttribute('data-type'));
     });
 
-    // Play button in card opens modal too
     const playBtn = actionRow.querySelector('.card-play-btn');
     playBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -594,7 +576,7 @@ async function renderTop10Row(title, endpoint) {
     img.alt = movie.title || movie.name || 'Top 10 poster';
     img.loading = 'lazy';
     img.decoding = 'async';
-    img.width = 135;
+    img.width  = 135;
     img.height = 200;
     card.appendChild(img);
 
@@ -709,11 +691,9 @@ function toggleLikeButton(btnElement, movieId) {
   if (!btnElement || !movieId) return;
   let nowLiked = false;
   if (likedIds.has(String(movieId))) {
-    // Unlike
     likedIds.delete(String(movieId));
     nowLiked = false;
   } else {
-    // Like
     likedIds.add(String(movieId));
     nowLiked = true;
   }
@@ -755,7 +735,6 @@ function applyListState(btnElement, movieId) {
 }
 
 function syncListButtonsAcrossPage(movieId, inList) {
-  // Update standard add-to-list-btn buttons
   const listBtns = document.querySelectorAll(`.add-to-list-btn[data-id="${movieId}"]`);
   listBtns.forEach(btn => {
     if (inList) {
@@ -769,7 +748,6 @@ function syncListButtonsAcrossPage(movieId, inList) {
     }
   });
 
-  // Update recommendation card add-to-list-btn buttons
   const recCards = document.querySelectorAll(`.rec-card[data-id="${movieId}"]`);
   recCards.forEach(card => {
     const btn = card.querySelector('.rec-add-btn');
@@ -786,7 +764,6 @@ function syncListButtonsAcrossPage(movieId, inList) {
     }
   });
 
-  // Update modal list button
   const modalAddBtn = document.getElementById('modal-add-list-btn');
   if (modalAddBtn && modalAddBtn.getAttribute('data-id') == movieId) {
     if (inList) {
@@ -802,7 +779,6 @@ function syncListButtonsAcrossPage(movieId, inList) {
 }
 
 function syncLikeButtonsAcrossPage(movieId, nowLiked) {
-  // Update cards in movie rows and search results
   const cards = document.querySelectorAll(`.movie-card[data-id="${movieId}"], .top-10-card[data-id="${movieId}"]`);
   cards.forEach(card => {
     const btn = card.querySelector('.like-btn');
@@ -827,7 +803,6 @@ function syncLikeButtonsAcrossPage(movieId, nowLiked) {
     }
   });
 
-  // Update modal like button
   const modalLikeBtn = document.getElementById('modal-like-btn');
   if (modalLikeBtn && modalLikeBtn.getAttribute('data-id') == movieId) {
     const icon = modalLikeBtn.querySelector('i');
@@ -873,7 +848,7 @@ function triggerSearch(query) {
   searchResultsGrid.innerHTML = '<div style="color:var(--text-muted); grid-column: 1/-1; text-align:center; padding: 50px;">Searching titles...</div>';
 
   searchDebounceTimeout = setTimeout(async () => {
-    const data = await fetchFromTMDB(`/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(query)}&include_adult=false`);
+    const data = await fetchFromTMDB(`/search/multi?query=${encodeURIComponent(query)}&include_adult=false`);
 
     searchResultsGrid.innerHTML = '';
     if (!data || !data.results || data.results.length === 0) {
@@ -981,12 +956,11 @@ async function openMovieModal(id, type = 'movie') {
   document.getElementById('modal-video-player').innerHTML = '';
   modal.classList.remove('hidden');
 
-  let movie = await fetchFromTMDB(`/${resolvedType}/${id}?api_key=${API_KEY}&append_to_response=videos,credits,similar`);
+  let movie = await fetchFromTMDB(`/${resolvedType}/${id}?append_to_response=videos,credits,similar`);
 
-  // Fallback: try opposite type if first fails
   if (!movie || movie.success === false) {
     resolvedType = resolvedType === 'tv' ? 'movie' : 'tv';
-    movie = await fetchFromTMDB(`/${resolvedType}/${id}?api_key=${API_KEY}&append_to_response=videos,credits,similar`);
+    movie = await fetchFromTMDB(`/${resolvedType}/${id}?append_to_response=videos,credits,similar`);
   }
 
   if (!movie) {
@@ -999,7 +973,7 @@ async function openMovieModal(id, type = 'movie') {
   const backdropImg = document.getElementById('modal-backdrop-img');
   if (movie.backdrop_path) {
     backdropImg.src = `${IMAGE_BASE_URL}/w1280${movie.backdrop_path}`;
-    backdropImg.width = 1280;
+    backdropImg.width  = 1280;
     backdropImg.height = 720;
     backdropImg.style.display = 'block';
   } else {
@@ -1012,7 +986,6 @@ async function openMovieModal(id, type = 'movie') {
 
   const videoPlayerContainer = document.getElementById('modal-video-player');
   if (trailer) {
-    // Embed with enablejsapi, autoplay muted, no redirect to YouTube
     videoPlayerContainer.innerHTML = `
       <iframe
         id="yt-player"
@@ -1031,7 +1004,6 @@ async function openMovieModal(id, type = 'movie') {
     backdropImg.style.display = 'block';
   }
 
-  // Reset sound state
   soundMuted = true;
   const soundBtn = document.getElementById('modal-mute-btn');
   if (soundBtn) {
@@ -1040,7 +1012,6 @@ async function openMovieModal(id, type = 'movie') {
     soundBtn.querySelector('.tooltiptext').innerText = 'Unmute';
   }
 
-  // Modal play button → unmute + play
   const modalPlayBtn = document.getElementById('modal-play-btn');
   modalPlayBtn.onclick = () => {
     const iframe = document.querySelector('#modal-video-player iframe');
@@ -1055,7 +1026,6 @@ async function openMovieModal(id, type = 'movie') {
     }
   };
 
-  // Reset like button
   const modalLikeBtn = document.getElementById('modal-like-btn');
   if (modalLikeBtn) {
     modalLikeBtn.setAttribute('data-id', id);
@@ -1065,17 +1035,13 @@ async function openMovieModal(id, type = 'movie') {
     modalLikeBtn.style.backgroundColor = 'rgba(20,20,20,0.6)';
     const tooltip = modalLikeBtn.querySelector('.tooltiptext');
     if (tooltip) tooltip.innerText = 'Like';
-    // Apply persisted liked state for this movie
     applyLikedState(modalLikeBtn, id);
-    // Re-wire click (replace previous handler to avoid stacking)
     modalLikeBtn.onclick = () => toggleLikeButton(modalLikeBtn, id);
   }
 
-  // Wire modal + / ✅ (Add to My List) button
   const modalAddBtn = document.getElementById('modal-add-list-btn');
   if (modalAddBtn) {
     modalAddBtn.setAttribute('data-id', id);
-    // Restore state: show ✅ if already in list, + if not
     const alreadyInList = myPersonalList.some(m => String(m.id) === String(id));
     if (alreadyInList) {
       modalAddBtn.innerHTML = '<i class="fa-solid fa-check"></i><span class="tooltiptext">Remove from My List</span>';
@@ -1086,7 +1052,6 @@ async function openMovieModal(id, type = 'movie') {
       modalAddBtn.style.backgroundColor = '';
       modalAddBtn.style.borderColor = '';
     }
-    // Re-assign onclick each time modal opens so it always uses the current movie
     modalAddBtn.onclick = () => {
       toggleMyList(movie, modalAddBtn);
     };
@@ -1192,14 +1157,12 @@ function populateRecommendations(items) {
       openMovieModal(movie.id, resolvedType);
     });
 
-    // Wire the add-to-list button in each recommendation card
     const recAddBtn = card.querySelector('.rec-add-btn');
     if (recAddBtn) {
-      applyListState(recAddBtn, movie.id); // restore persisted state
+      applyListState(recAddBtn, movie.id);
       recAddBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleMyList(movie, recAddBtn);
-        // Sync icon/colour manually since toggleMyList drives innerHTML
         const inList = myPersonalList.some(m => m.id === movie.id);
         recAddBtn.querySelector('.tooltiptext').innerText = inList ? 'Remove from List' : 'Add to List';
       });
@@ -1227,11 +1190,9 @@ function clearFeed() {
 
 function setKidsMode(active) {
   isKidsMode = active;
-  const navbar = document.getElementById('navbar');
   const kidsLabel = document.querySelector('.kids-label');
 
   if (active) {
-    // Show Netflix Kids branding in navbar
     document.body.classList.add('kids-mode');
     const navbarAvatar = document.querySelector('.profile-avatar');
     if (navbarAvatar) {
@@ -1270,14 +1231,14 @@ async function showTVFeed() {
   clearFeed();
   setKidsMode(false);
 
-  const tvResponse = await fetchFromTMDB(`/discover/tv?api_key=${API_KEY}&with_networks=213`);
+  const tvResponse = await fetchFromTMDB('/discover/tv?with_networks=213');
   if (tvResponse && tvResponse.results.length > 0) await setupHeroBanner(tvResponse.results, 'tv');
 
-  renderMovieRow('Trending TV Series', `/trending/tv/week?api_key=${API_KEY}`, false);
-  renderMovieRow('Top Rated Series', `/tv/top_rated?api_key=${API_KEY}`, false);
-  renderMovieRow('Action & Adventure Shows', `/discover/tv?api_key=${API_KEY}&with_genres=10759`, false);
-  renderMovieRow('Sci-Fi & Fantasy Series', `/discover/tv?api_key=${API_KEY}&with_genres=10765`, false);
-  renderMovieRow('Comedy Series', `/discover/tv?api_key=${API_KEY}&with_genres=35`, false);
+  renderMovieRow('Trending TV Series', '/trending/tv/week', false);
+  renderMovieRow('Top Rated Series', '/tv/top_rated', false);
+  renderMovieRow('Action & Adventure Shows', '/discover/tv?with_genres=10759', false);
+  renderMovieRow('Sci-Fi & Fantasy Series', '/discover/tv?with_genres=10765', false);
+  renderMovieRow('Comedy Series', '/discover/tv?with_genres=35', false);
 }
 
 async function showMoviesFeed() {
@@ -1287,8 +1248,8 @@ async function showMoviesFeed() {
   const movieResponse = await fetchFromTMDB(requests.fetchRecentReleases);
   if (movieResponse && movieResponse.results.length > 0) await setupHeroBanner(movieResponse.results, 'movie');
 
-  renderMovieRow('Trending Movies', `/trending/movie/week?api_key=${API_KEY}`, false);
-  renderMovieRow('Top Rated Movies', `/movie/top_rated?api_key=${API_KEY}`, false);
+  renderMovieRow('Trending Movies', '/trending/movie/week', false);
+  renderMovieRow('Top Rated Movies', '/movie/top_rated', false);
   renderMovieRow('Action Thrillers', requests.fetchActionMovies, false);
   renderMovieRow('Sci-Fi Specials', requests.fetchSciFiMovies, false);
   renderMovieRow('Scary Horror Movies', requests.fetchHorrorMovies, false);
@@ -1299,7 +1260,7 @@ async function showLatestFeed() {
   clearFeed();
   setKidsMode(false);
 
-  const upcomingMovies = `/movie/upcoming?api_key=${API_KEY}&language=en-US&page=1`;
+  const upcomingMovies = '/movie/upcoming?language=en-US&page=1';
   const upcomingResponse = await fetchFromTMDB(upcomingMovies);
   if (upcomingResponse && upcomingResponse.results.length > 0) await setupHeroBanner(upcomingResponse.results, 'movie');
 
@@ -1426,22 +1387,19 @@ async function showKidsFeed() {
   clearFeed();
   setKidsMode(true);
 
-  // Kids-specific hero banner area styling
   const heroBanner = document.getElementById('hero-banner');
   heroBanner.classList.add('kids-hero');
 
-  // Fetch popular family animations for hero
-  const animResponse = await fetchFromTMDB(`/discover/movie?api_key=${API_KEY}&with_genres=16&sort_by=popularity.desc&page=1`);
+  const animResponse = await fetchFromTMDB('/discover/movie?with_genres=16&sort_by=popularity.desc&page=1');
   if (animResponse && animResponse.results.length > 0) {
     await setupHeroBanner(animResponse.results, 'movie');
   }
 
-  // Distinct endpoints for each kids row - no duplicates
-  const kidsAnimation = `/discover/movie?api_key=${API_KEY}&with_genres=16&sort_by=popularity.desc&page=1`;
-  const kidsFamily = `/discover/movie?api_key=${API_KEY}&with_genres=10751&certification_country=US&certification.lte=PG&sort_by=popularity.desc&page=1`;
-  const kidsAdventure = `/discover/movie?api_key=${API_KEY}&with_genres=12&certification_country=US&certification.lte=PG&sort_by=popularity.desc&page=2`;
-  const kidsTVShows = `/discover/tv?api_key=${API_KEY}&with_genres=10762&sort_by=popularity.desc&page=1`;
-  const kidsComedy = `/discover/movie?api_key=${API_KEY}&with_genres=35&certification_country=US&certification.lte=G&sort_by=popularity.desc&page=1`;
+  const kidsAnimation = '/discover/movie?with_genres=16&sort_by=popularity.desc&page=1';
+  const kidsFamily = '/discover/movie?with_genres=10751&certification_country=US&certification.lte=PG&sort_by=popularity.desc&page=1';
+  const kidsAdventure = '/discover/movie?with_genres=12&certification_country=US&certification.lte=PG&sort_by=popularity.desc&page=2';
+  const kidsTVShows = '/discover/tv?with_genres=10762&sort_by=popularity.desc&page=1';
+  const kidsComedy = '/discover/movie?with_genres=35&certification_country=US&certification.lte=G&sort_by=popularity.desc&page=1';
 
   renderMovieRow('Popular Animations', kidsAnimation, false);
   renderMovieRow('Family Favourites', kidsFamily, false);
@@ -1461,22 +1419,19 @@ function handleRouting() {
   const linkMyList = document.getElementById('link-mylist');
   const navLinksArray = [linkHome, linkTV, linkMovies, linkLatest, linkMyList];
 
-  // Mobile nav link map (hash → element ID)
   const mobileNavMap = {
-    '#home': 'm-link-home',
-    '#tv': 'm-link-tv',
+    '#home':   'm-link-home',
+    '#tv':     'm-link-tv',
     '#movies': 'm-link-movies',
     '#latest': 'm-link-latest',
     '#mylist': 'm-link-mylist',
-    '#kids': 'm-link-kids',
+    '#kids':   'm-link-kids',
   };
   const allMobileLinks = Object.values(mobileNavMap).map(id => document.getElementById(id));
 
   function setActiveNavLink(activeLink) {
-    // Desktop links
     navLinksArray.forEach(link => { if (link) link.classList.remove('active'); });
     if (activeLink) activeLink.classList.add('active');
-    // Mobile links
     allMobileLinks.forEach(link => { if (link) link.classList.remove('active'); });
     const mobileActiveId = mobileNavMap[hash];
     if (mobileActiveId) {
