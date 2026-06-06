@@ -5,6 +5,14 @@
  */
 
 exports.handler = async function(event, context) {
+  // WARNING: This function uses the global fetch API which requires Node 18+.
+  if (typeof fetch === 'undefined') {
+    return {
+      statusCode: 500,
+      body: 'Node 18+ required'
+    };
+  }
+
   // Extract path and params from query parameters
   const { path, params } = event.queryStringParameters;
 

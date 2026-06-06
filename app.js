@@ -94,7 +94,9 @@ async function initApp() {
   try {
     handleRouting();
   } catch (error) {
-    console.error('Initialization error:', error);
+    if (window.location.hostname === 'localhost') {
+      console.error('Initialization error:', error);
+    }
   }
 }
 
@@ -102,11 +104,31 @@ async function fetchFromTMDB(endpoint) {
   const url = `${BASE_URL}${encodeURIComponent(endpoint)}`;
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        showConnectionError();
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     return await response.json();
   } catch (err) {
-    console.error(`Error loading data from ${url}:`, err);
+    if (window.location.hostname === 'localhost') {
+      console.error(`Error loading data from ${url}:`, err);
+    }
+    showConnectionError();
     return null;
+  }
+}
+
+function showConnectionError() {
+  showToast("Could not connect to the API. Please run the app using netlify dev.");
+  const container = document.getElementById('rows-container');
+  if (container && !container.querySelector('.connection-error')) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'connection-error';
+    errorDiv.style.cssText = 'text-align: center; padding: 100px 20px; color: var(--netflix-red); font-size: 1.25rem; font-weight: bold; display: flex; flex-direction: column; align-items: center; gap: 15px; grid-column: 1/-1;';
+    errorDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem;"></i> Could not connect to the API. Please run the app using netlify dev.`;
+    container.appendChild(errorDiv);
   }
 }
 
@@ -134,6 +156,7 @@ function setupUIEventListeners() {
   document.addEventListener('click', (e) => {
     if (!searchContainer.contains(e.target) && searchInput.value === '') {
       searchContainer.classList.remove('active');
+      triggerSearch('');
     }
   });
 
@@ -290,6 +313,11 @@ async function setupHeroBanner(movies, mediaType = 'movie') {
   const filtered = movies.filter(m => m.backdrop_path && m.overview);
   if (filtered.length === 0) return;
 
+  const heroSection = document.getElementById('hero-banner');
+  if (heroSection) {
+    heroSection.removeAttribute('data-loaded');
+  }
+
   const movieSummary = filtered[Math.floor(Math.random() * Math.min(filtered.length, 5))];
   const resolvedType = movieSummary.first_air_date ? 'tv' : (mediaType || 'movie');
 
@@ -297,7 +325,6 @@ async function setupHeroBanner(movies, mediaType = 'movie') {
   const movieDetails = await fetchFromTMDB(`/${resolvedType}/${movieSummary.id}`);
   const movie = movieDetails || movieSummary;
 
-  const heroSection = document.getElementById('hero-banner');
   const heroTitle = document.getElementById('hero-title');
   const heroDescription = document.getElementById('hero-description');
   const heroMatch = document.getElementById('hero-match');
@@ -307,13 +334,30 @@ async function setupHeroBanner(movies, mediaType = 'movie') {
 
   // Use w1280 instead of /original — same visual quality, ~75% smaller file size
   const backdropUrl = `${IMAGE_BASE_URL}/w1280${movie.backdrop_path}`;
-  heroSection.style.backgroundImage = `url('${backdropUrl}')`;
+  if (heroSection) {
+    heroSection.style.backgroundImage = `url('${backdropUrl}')`;
+  }
   const lcpImg = document.getElementById('hero-lcp-img');
   if (lcpImg) {
+    lcpImg.onload = () => {
+      if (heroSection) heroSection.setAttribute('data-loaded', 'true');
+    };
+    lcpImg.onerror = () => {
+      if (heroSection) heroSection.setAttribute('data-loaded', 'true');
+    };
     lcpImg.src = backdropUrl;
     lcpImg.width = 1280;
     lcpImg.height = 720;
     lcpImg.sizes = "100vw";
+  } else {
+    const img = new Image();
+    img.onload = () => {
+      if (heroSection) heroSection.setAttribute('data-loaded', 'true');
+    };
+    img.onerror = () => {
+      if (heroSection) heroSection.setAttribute('data-loaded', 'true');
+    };
+    img.src = backdropUrl;
   }
   heroTitle.innerText = movie.name || movie.title || movie.original_name;
   heroDescription.innerText = movie.overview;
@@ -407,6 +451,14 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
     card.setAttribute('role', 'button');
     card.setAttribute('aria-label', movie.title || movie.name || 'Movie Card');
 
+    // Toggle row hover state to prevent horizontal/vertical card clipping
+    card.addEventListener('mouseenter', () => {
+      rowDiv.classList.add('row-hovered');
+    });
+    card.addEventListener('mouseleave', () => {
+      rowDiv.classList.remove('row-hovered');
+    });
+
     const isMobile = window.innerWidth <= 768;
     let imgSize = 'w342';
     if (!isLarge) {
@@ -476,6 +528,25 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
 
     card.appendChild(hoverDetails);
 
+    // Bind list & like state and actions directly
+    const listBtn = hoverDetails.querySelector('.add-to-list-btn');
+    if (listBtn) {
+      applyListState(listBtn, movie.id);
+      listBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleMyList(movie, listBtn);
+      });
+    }
+
+    const likeBtn = hoverDetails.querySelector('.like-btn');
+    if (likeBtn) {
+      applyLikedState(likeBtn, movie.id);
+      likeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLiked(movie.id, likeBtn);
+      });
+    }
+
     card.addEventListener('click', (e) => {
       if (e.target.closest('.card-action-row')) return;
       openMovieModal(card.getAttribute('data-id'), card.getAttribute('data-type'));
@@ -502,25 +573,6 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
 
   arrowLeft.addEventListener('click', () => { cardsContainer.scrollLeft -= cardsContainer.offsetWidth * 0.75; });
   arrowRight.addEventListener('click', () => { cardsContainer.scrollLeft += cardsContainer.offsetWidth * 0.75; });
-
-  rowDiv.querySelectorAll('.add-to-list-btn').forEach(btn => {
-    const movieObj = uniqueResults.find(m => m.id == btn.getAttribute('data-id'));
-    applyListState(btn, btn.getAttribute('data-id')); // restore persisted state
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleMyList(movieObj, btn);
-    });
-  });
-
-  rowDiv.querySelectorAll('.like-btn').forEach((btn, i) => {
-    const card = btn.closest('.movie-card');
-    const movieId = card ? card.getAttribute('data-id') : null;
-    applyLikedState(btn, movieId); // restore persisted liked state
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleLikeButton(btn, movieId);
-    });
-  });
 }
 
 // ─── TOP 10 ROW ────────────────────────────────────────────────────────────────
@@ -563,6 +615,14 @@ async function renderTop10Row(title, endpoint) {
     card.setAttribute('tabindex', '0');
     card.setAttribute('role', 'button');
     card.setAttribute('aria-label', movie.title || movie.name || `Top ${index + 1} Title`);
+
+    // Toggle row hover state to prevent horizontal/vertical card clipping
+    card.addEventListener('mouseenter', () => {
+      rowDiv.classList.add('row-hovered');
+    });
+    card.addEventListener('mouseleave', () => {
+      rowDiv.classList.remove('row-hovered');
+    });
 
     const numSpan = document.createElement('span');
     numSpan.className = 'top-10-number';
@@ -612,6 +672,25 @@ async function renderTop10Row(title, endpoint) {
 
     card.appendChild(hoverDetails);
 
+    // Bind list & like state and actions directly
+    const listBtn = hoverDetails.querySelector('.add-to-list-btn');
+    if (listBtn) {
+      applyListState(listBtn, movie.id);
+      listBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleMyList(movie, listBtn);
+      });
+    }
+
+    const likeBtn = hoverDetails.querySelector('.like-btn');
+    if (likeBtn) {
+      applyLikedState(likeBtn, movie.id);
+      likeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLikeButton(likeBtn, movie.id);
+      });
+    }
+
     card.addEventListener('click', (e) => {
       if (e.target.closest('.card-action-row')) return;
       openMovieModal(card.getAttribute('data-id'), card.getAttribute('data-type'));
@@ -632,25 +711,6 @@ async function renderTop10Row(title, endpoint) {
 
   arrowLeft.addEventListener('click', () => { cardsContainer.scrollLeft -= cardsContainer.offsetWidth * 0.75; });
   arrowRight.addEventListener('click', () => { cardsContainer.scrollLeft += cardsContainer.offsetWidth * 0.75; });
-
-  rowDiv.querySelectorAll('.add-to-list-btn').forEach(btn => {
-    const movieObj = results.find(m => m.id == btn.getAttribute('data-id'));
-    applyListState(btn, btn.getAttribute('data-id')); // restore persisted state
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleMyList(movieObj, btn);
-    });
-  });
-
-  rowDiv.querySelectorAll('.like-btn').forEach(btn => {
-    const card = btn.closest('.top-10-card');
-    const movieId = card ? card.getAttribute('data-id') : null;
-    applyLikedState(btn, movieId); // restore persisted liked state
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleLikeButton(btn, movieId);
-    });
-  });
 }
 
 function renderRowError(title, container, isLarge) {
@@ -827,7 +887,6 @@ function syncLikeButtonsAcrossPage(movieId, nowLiked) {
 }
 
 // ─── SEARCH ───────────────────────────────────────────────────────────────────
-let searchDebounceTimeout = null;
 function triggerSearch(query) {
   if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
 
@@ -912,13 +971,10 @@ function triggerSearch(query) {
         </div>
         <div class="card-title">${movie.title || movie.name || movie.original_name}</div>
       `;
+
       card.appendChild(hoverDetails);
 
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.card-action-row')) return;
-        openMovieModal(movie.id, movie.media_type || 'movie');
-      });
-
+      // Bind list & like state and actions directly
       const listBtn = hoverDetails.querySelector('.add-to-list-btn');
       if (listBtn) {
         applyListState(listBtn, movie.id);
@@ -936,6 +992,11 @@ function triggerSearch(query) {
           toggleLikeButton(likeBtn, movie.id);
         });
       }
+
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.card-action-row')) return;
+        openMovieModal(movie.id, movie.media_type || 'movie');
+      });
 
       searchResultsGrid.appendChild(card);
     });
@@ -1290,7 +1351,7 @@ async function showMyListFeed() {
     grid.innerHTML = `
       <div style="color:var(--text-muted); grid-column: 1/-1; text-align:center; padding: 120px 0; font-size:1.15rem;">
         <i class="fa-solid fa-plus" style="font-size:3.5rem; margin-bottom:20px; display:block; color:rgba(255,255,255,0.25);"></i>
-        You haven't added any titles yet. Browse and add content to your list!
+        Your list is empty. Browse movies and hit + to save them here.
       </div>
     `;
   } else {
@@ -1352,21 +1413,17 @@ async function showMyListFeed() {
         </div>
         <div class="card-title">${movie.title || movie.name || movie.original_name}</div>
       `;
+
       card.appendChild(hoverDetails);
 
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.card-action-row')) return;
-        openMovieModal(movie.id, type);
-      });
-
-      const removeBtn = card.querySelector('.add-to-list-btn');
+      const removeBtn = hoverDetails.querySelector('.add-to-list-btn');
       removeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleMyList(movie, removeBtn);
         showMyListFeed();
       });
 
-      const likeBtn = card.querySelector('.like-btn');
+      const likeBtn = hoverDetails.querySelector('.like-btn');
       if (likeBtn) {
         applyLikedState(likeBtn, movie.id);
         likeBtn.addEventListener('click', (e) => {
