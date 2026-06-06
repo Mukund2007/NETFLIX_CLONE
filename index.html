@@ -4,466 +4,257 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Netflix - Watch TV Shows Online, Watch Movies Online</title>
-  <meta name="description" content="Watch Netflix movies &amp; TV shows online or stream right to your smart TV, game console, PC, Mac, mobile, tablet and more.">
-
-  <!-- Favicon -->
+  <meta name="description" content="Watch Netflix movies & TV shows online or stream right to your smart TV, game console, PC, Mac, mobile, tablet and more.">
   <link rel="shortcut icon" href="https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico" type="image/x-icon">
-
-  <!-- Preconnect and Preload tags -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
-  <link rel="dns-prefetch" href="https://api.themoviedb.org">
-
-  <!-- Preload FontAwesome files for performance -->
-  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
-
-  <!-- Inline critical CSS to prevent FOUC / layout shifts on initial load -->
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { background: #141414; color: #fff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
-    .hidden { display: none !important; }
-    
-    /* Who's Watching profile screen critical styling */
-    .profile-selection-overlay {
-      position: fixed;
-      inset: 0;
-      background-color: #141414;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      transition: opacity 0.4s ease, visibility 0.4s;
-    }
-    .profile-selection-overlay.fade-out {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-    .profiles-container {
-      text-align: center;
-      max-width: 800px;
-      padding: 20px;
-    }
-    .profiles-title {
-      font-size: 3.5rem;
-      font-weight: 500;
-      letter-spacing: 1px;
-      margin-bottom: 30px;
-      color: #fff;
-    }
-    .profiles-list {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 30px;
-      margin-bottom: 50px;
-      flex-wrap: wrap;
-    }
-    .profile-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      cursor: pointer;
-      text-decoration: none;
-      color: #808080;
-      transition: color 0.2s ease;
-    }
-    .profile-card:hover { color: #fff; }
-    .profile-avatar-wrapper {
-      width: 150px;
-      height: 150px;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-bottom: 15px;
-      position: relative;
-      border: 3px solid transparent;
-      transition: border-color 0.2s ease;
-    }
-    .profile-card:hover .profile-avatar-wrapper { border-color: #fff; }
-    .profile-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-    .profile-name { font-size: 1.25rem; font-weight: 400; text-align: center; }
-    
-    .manage-profiles-btn {
-      display: inline-block;
-      padding: 10px 24px;
-      border: 1px solid #808080;
-      background: transparent;
-      color: #808080;
-      font-size: 1.1rem;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      cursor: pointer;
-      transition: color 0.2s, border-color 0.2s;
-    }
-    .manage-profiles-btn:hover { color: #fff; border-color: #fff; }
-
-    /* App container base classes */
-    .app-container { opacity: 0; transition: opacity 0.5s ease; min-height: 100vh; display: flex; flex-direction: column; }
-    .app-container.fade-in { opacity: 1; }
-
-    /* FontAwesome override for swapped fonts */
-    @font-face {
-      font-family: 'Font Awesome 6 Free';
-      font-display: swap;
-      src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2') format('woff2');
-      font-weight: 900; font-style: normal;
-    }
-  </style>
-
-  <!-- Load production styles -->
-  <link rel="preload" as="style" href="style.min.css?v=3">
-  <link rel="stylesheet" href="style.min.css?v=3" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="style.min.css?v=3"></noscript>
-
-  <!-- FontAwesome styles -->
-  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" onload="this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="style.min.css?v=4">
 </head>
-
 <body>
 
-  <!-- Netflix Profile Selection Overlay (Who's Watching?) -->
-  <div id="profile-selection" class="profile-selection-overlay">
-    <div class="profiles-container">
-      <h1 class="profiles-title">Who's watching?</h1>
-      <div class="profiles-list">
-        <!-- User 1 Profile -->
-        <div class="profile-card" id="profile-user1-btn">
-          <div class="profile-avatar-wrapper">
-            <img class="profile-avatar-img" src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt="User 1 Avatar">
+  <!-- ===== WHO'S WATCHING PROFILE SCREEN ===== -->
+  <div id="profile-screen" class="profile-screen">
+    <div class="profile-screen-inner">
+      <h1 class="profile-screen-title">Who's watching?</h1>
+      <div class="profile-list">
+        <div class="profile-item" id="btn-profile-user">
+          <div class="profile-avatar">
+            <img src="https://i.pravatar.cc/150?img=11" alt="User 1">
           </div>
           <span class="profile-name">User 1</span>
         </div>
-        <!-- Kids Profile -->
-        <div class="profile-card" id="profile-kids-btn">
-          <div class="profile-avatar-wrapper">
-            <img class="profile-avatar-img" src="data:image/svg+xml;utf8,<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><rect width='100' height='100' rx='10' fill='%23e9a716'/><circle cx='32' cy='38' r='6' fill='white'/><circle cx='68' cy='38' r='6' fill='white'/><path d='M 30,55 A 25,25 0 0,0 70,55' fill='none' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>" alt="Kids Avatar">
+        <div class="profile-item" id="btn-profile-kids">
+          <div class="profile-avatar kids-avatar">
+            <i class="fa-solid fa-child-reaching"></i>
           </div>
           <span class="profile-name">Kids</span>
         </div>
-        <!-- Add Profile Profile -->
-        <div class="profile-card">
-          <div class="profile-avatar-wrapper" style="background: transparent; display: flex; align-items: center; justify-content: center; border: none;">
-            <i class="fa-solid fa-circle-plus" style="font-size: 80px; color: #333333; transition: color 0.2s ease;"></i>
+        <div class="profile-item">
+          <div class="profile-avatar add-avatar">
+            <i class="fa-solid fa-plus"></i>
           </div>
           <span class="profile-name">Add Profile</span>
         </div>
       </div>
-      <button class="manage-profiles-btn">Manage Profiles</button>
+      <button class="manage-btn">Manage Profiles</button>
     </div>
   </div>
 
-  <!-- Main App Layout (Init hidden, faded in on profile selection) -->
-  <div id="app-wrapper" class="app-container">
-    
-    <!-- Transparent Navigation Bar -->
-    <header id="navbar" class="navbar">
-      <div class="navbar-left">
-        <a href="#" class="logo" id="nav-logo" aria-label="Netflix Home">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" alt="Netflix Logo" class="logo-img" width="92" height="25">
-        </a>
-        
-        <nav class="nav-links">
-          <a href="#" class="nav-link active" id="link-home">Home</a>
-          <a href="#" class="nav-link" id="link-tv">TV Shows</a>
-          <a href="#" class="nav-link" id="link-movies">Movies</a>
-          <a href="#" class="nav-link" id="link-latest">New &amp; Popular</a>
-          <a href="#" class="nav-link" id="link-mylist">My List</a>
-        </nav>
-      </div>
+  <!-- ===== MAIN APP ===== -->
+  <div id="app" class="app hidden">
 
-      <div class="navbar-right">
-        <!-- Smooth Expandable Search Bar -->
-        <div class="search-box-container" id="search-box-container">
-          <button class="search-btn" id="search-btn" aria-label="Open Search">
+    <!-- NAVBAR -->
+    <nav id="navbar" class="navbar">
+      <div class="nav-left">
+        <a href="#" class="nav-logo" id="logo-home">
+          <svg viewBox="0 0 111 30" class="netflix-logo" aria-hidden="true">
+            <g fill="#E50914">
+              <path d="M105.06 0l-6.94 17.99L91.18 0H82.1l11.37 28.41L82.3 56.2h8.97l6.93-17.81 6.94 17.81H114l-11.56-27.79L113.94 0h-8.88zM66.16 0v56.2h8.1V0h-8.1zM52.58 0v48.3L40.5 0h-9.83v56.2h8.1V7.9l12.08 48.3h9.83V0h-8.1zM26.68 0L14.8 27.95v.04L2.6 56.2H0v-56.2h8.06V40.4L18.64 14.2 14.2 0H26.68zM0 56.2h8.06V0H0v56.2z"/>
+            </g>
+          </svg>
+        </a>
+        <ul class="nav-links">
+          <li><a href="#" class="nav-link active" id="link-home">Home</a></li>
+          <li><a href="#" class="nav-link" id="link-tv">TV Shows</a></li>
+          <li><a href="#" class="nav-link" id="link-movies">Movies</a></li>
+          <li><a href="#" class="nav-link" id="link-new">New &amp; Popular</a></li>
+          <li><a href="#" class="nav-link" id="link-mylist">My List</a></li>
+        </ul>
+      </div>
+      <div class="nav-right">
+        <div class="nav-search-wrap" id="search-wrap">
+          <button class="nav-icon-btn" id="search-toggle-btn" aria-label="Search">
             <i class="fa-solid fa-magnifying-glass"></i>
           </button>
-          <input type="text" class="search-input" id="search-input" placeholder="Titles, people, genres..." aria-label="Search database">
-          <button class="search-clear-btn" id="search-clear-btn" aria-label="Clear Query">
+          <input type="text" id="search-input" class="search-input" placeholder="Titles, people, genres...">
+          <button class="search-clear-btn hidden" id="search-clear-btn" aria-label="Clear">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
-
-        <span class="kids-label" id="kids-label" tabindex="0" role="button" aria-label="Switch to Kids Mode">Kids</span>
-
-        <!-- Hamburger Icon Menu (Responsive Mobile views) -->
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu drawer" aria-expanded="false">
-          <span class="hamburger-line"></span>
-          <span class="hamburger-line"></span>
-          <span class="hamburger-line"></span>
+        <span class="kids-nav-link" id="kids-nav-link">Kids</span>
+        <button class="nav-icon-btn" id="notif-btn" aria-label="Notifications">
+          <i class="fa-regular fa-bell"></i>
+          <span class="notif-dot"></span>
         </button>
-
-        <!-- Notification Bell Dropdown -->
-        <div class="notification-container" id="notification-container">
-          <button class="nav-icon-btn" id="notification-btn" aria-label="Alerts">
-            <i class="fa-regular fa-bell"></i>
-            <span class="notification-badge" id="notification-badge">3</span>
-          </button>
-          
-          <div class="notification-dropdown" id="notification-dropdown">
-            <div class="notification-dropdown-arrow"></div>
-            <div class="notification-item" data-id="66732" data-type="tv">
-              <img src="https://image.tmdb.org/t/p/w92/or06cmd60Djr3tG6vsi6048cyqs.jpg" alt="Stranger Things" width="36" height="54">
-              <div class="notification-info">
-                <p class="notification-text">New Release: <strong>Stranger Things Season 5</strong> is streaming.</p>
-                <span class="notification-time">2 hours ago</span>
-              </div>
-            </div>
-            <div class="notification-item" data-id="119051" data-type="tv">
-              <img src="https://image.tmdb.org/t/p/w92/4Lt798835TsdT527712CplJ6s64.jpg" alt="Wednesday" width="36" height="54">
-              <div class="notification-info">
-                <p class="notification-text">Trending Now: <strong>Wednesday Season 2</strong> trailer is out.</p>
-                <span class="notification-time">1 day ago</span>
-              </div>
-            </div>
-            <div class="notification-item" data-id="27205" data-type="movie">
-              <img src="https://image.tmdb.org/t/p/w92/5kPv262zL4Z7n3RLZgnTA8Cc4gc.jpg" alt="Inception" width="36" height="54">
-              <div class="notification-info">
-                <p class="notification-text">Award Winner: <strong>Inception</strong> has been added to My List.</p>
-                <span class="notification-time">2 days ago</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Profile Avatar Menu Dropdown -->
-        <div class="profile-container" id="profile-container">
-          <div class="profile-trigger" id="profile-trigger" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false" aria-label="Profile navigation">
-            <img class="profile-avatar" id="nav-avatar-img" src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt="Profile avatar" width="32" height="32">
-            <i class="fa-solid fa-caret-down caret"></i>
-          </div>
-          
-          <div class="profile-dropdown" id="profile-dropdown">
-            <div class="profile-dropdown-arrow"></div>
-            <ul class="profile-list-links">
-              <li class="profile-item" id="switch-profile-user1"><a href="#"><img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt="User Avatar" width="28" height="28"> <span>User 1</span></a></li>
-              <li class="profile-item" id="switch-profile-kids"><a href="#"><img src="data:image/svg+xml;utf8,<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><rect width='100' height='100' rx='10' fill='%23e9a716'/><circle cx='32' cy='38' r='6' fill='white'/><circle cx='68' cy='38' r='6' fill='white'/><path d='M 30,55 A 25,25 0 0,0 70,55' fill='none' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>" alt="Kids Avatar" width="28" height="28"> <span>Kids</span></a></li>
-              <li class="profile-item"><a href="#"><i class="fa-solid fa-pencil"></i> <span>Manage Profiles</span></a></li>
-              <li class="profile-item divider"></li>
-              <li class="profile-item"><a href="#"><i class="fa-solid fa-user"></i> <span>Account</span></a></li>
-              <li class="profile-item"><a href="#"><i class="fa-regular fa-circle-question"></i> <span>Help Center</span></a></li>
-              <li class="profile-item divider"></li>
-              <li class="profile-item" id="nav-signout-btn"><a href="#"><span>Sign out of Netflix</span></a></li>
+        <div class="nav-profile-wrap" id="nav-profile-wrap">
+          <img id="nav-avatar" src="https://i.pravatar.cc/150?img=11" alt="Profile" class="nav-avatar">
+          <i class="fa-solid fa-caret-down nav-caret"></i>
+          <div class="profile-dropdown">
+            <ul>
+              <li class="dropdown-item" id="dd-switch-user"><img src="https://i.pravatar.cc/150?img=11" alt=""> User 1</li>
+              <li class="dropdown-item" id="dd-switch-kids"><i class="fa-solid fa-child-reaching"></i> Kids</li>
+              <li class="dropdown-item divider-item"><hr></li>
+              <li class="dropdown-item" id="dd-signout"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sign out of Netflix</li>
             </ul>
           </div>
         </div>
       </div>
-    </header>
+    </nav>
 
-    <!-- Mobile Drawer Side Menu Overlay -->
-    <div class="mobile-menu" id="mobile-menu" aria-hidden="true">
-      <div class="mobile-menu-overlay" id="mobile-menu-overlay"></div>
-      <nav class="mobile-menu-panel" id="mobile-menu-panel">
-        <button class="mobile-menu-close" id="mobile-menu-close" aria-label="Close navigation drawer">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-        <div class="mobile-menu-logo">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" alt="Netflix logo banner" width="81" height="22">
-        </div>
-        <ul class="mobile-nav-links">
-          <li><a href="#" class="mobile-nav-link" id="m-link-home"><i class="fa-solid fa-house"></i> Home</a></li>
-          <li><a href="#" class="mobile-nav-link" id="m-link-tv"><i class="fa-solid fa-tv"></i> TV Shows</a></li>
-          <li><a href="#" class="mobile-nav-link" id="m-link-movies"><i class="fa-solid fa-film"></i> Movies</a></li>
-          <li><a href="#" class="mobile-nav-link" id="m-link-latest"><i class="fa-solid fa-fire"></i> New &amp; Popular</a></li>
-          <li><a href="#" class="mobile-nav-link" id="m-link-mylist"><i class="fa-solid fa-list"></i> My List</a></li>
-          <li><a href="#" class="mobile-nav-link" id="m-link-kids"><i class="fa-solid fa-child"></i> Kids</a></li>
-        </ul>
-      </nav>
-    </div>
-
-    <!-- Main Content Container -->
+    <!-- MAIN CONTENT -->
     <main id="main-content">
-      
-      <!-- Hero Banner Area (Dynamic LCP content via TMDB) -->
-      <section id="hero-banner" class="hero-banner">
-        <img id="hero-lcp-img"
-             class="hero-lcp-img"
-             src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-             alt="Hero backdrop"
-             fetchpriority="high"
-             decoding="async"
-             width="1280"
-             height="720">
-        <div class="hero-bg-overlay"></div>
-        <div class="hero-bottom-fade"></div>
-        
-        <div class="hero-content">
-          <div class="hero-badge" id="hero-badge">
-            <svg class="n-logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <path d="M20 0h20v80H20z" fill="#B20710"/>
-              <path d="M60 0h20v100H60z" fill="#B20710"/>
-              <path d="M20 0l40 100H40L20 0z" fill="#E50914"/>
+
+      <!-- HERO BANNER -->
+      <section id="hero-section" class="hero-section">
+        <div class="hero-backdrop">
+          <img id="hero-img" src="" alt="" class="hero-bg-img">
+          <div class="hero-vignette-left"></div>
+          <div class="hero-vignette-bottom"></div>
+        </div>
+        <div class="hero-content" id="hero-content">
+          <div class="hero-badge" id="hero-badge" style="display:none">
+            <svg viewBox="0 0 111 30" class="hero-n-logo" aria-hidden="true">
+              <g fill="#E50914"><path d="M105.06 0l-6.94 17.99L91.18 0H82.1l11.37 28.41L82.3 56.2h8.97l6.93-17.81 6.94 17.81H114l-11.56-27.79L113.94 0h-8.88zM66.16 0v56.2h8.1V0h-8.1zM52.58 0v48.3L40.5 0h-9.83v56.2h8.1V7.9l12.08 48.3h9.83V0h-8.1zM26.68 0L14.8 27.95v.04L2.6 56.2H0v-56.2h8.06V40.4L18.64 14.2 14.2 0H26.68zM0 56.2h8.06V0H0v56.2z"/></g>
             </svg>
-            <span>ORIGINAL SERIES</span>
+            <span>ORIGINAL</span>
           </div>
-          <h1 class="hero-title" id="hero-title">Stranger Things</h1>
-          <div class="hero-meta">
-            <span class="hero-match" id="hero-match">98% Match</span>
-            <span class="hero-year" id="hero-year">2022</span>
-            <span class="hero-age-rating">16+</span>
-            <span class="hero-duration" id="hero-duration">4 Seasons</span>
+          <h1 class="hero-title" id="hero-title">Loading...</h1>
+          <div class="hero-meta" id="hero-meta">
+            <span class="hero-match" id="hero-match"></span>
+            <span class="hero-year" id="hero-year"></span>
+            <span class="hero-rating" id="hero-rating"></span>
+            <span class="hero-duration" id="hero-duration"></span>
           </div>
-          <p class="hero-description" id="hero-description">
-            When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces and one strange little girl.
-          </p>
-          <div class="hero-buttons">
-            <button class="hero-btn play-btn" id="hero-play-btn" aria-label="Play Hero Video">
+          <p class="hero-desc" id="hero-desc"></p>
+          <div class="hero-actions">
+            <button class="hero-btn hero-play-btn" id="hero-play-btn">
               <i class="fa-solid fa-play"></i> Play
             </button>
-            <button class="hero-btn info-btn" id="hero-info-btn" aria-label="More information about Hero Video">
+            <button class="hero-btn hero-info-btn" id="hero-info-btn">
               <i class="fa-solid fa-circle-info"></i> More Info
             </button>
           </div>
         </div>
+        <div class="hero-loading-skeleton" id="hero-skeleton">
+          <div class="skeleton-line wide"></div>
+          <div class="skeleton-line medium"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-actions">
+            <div class="skeleton-btn"></div>
+            <div class="skeleton-btn"></div>
+          </div>
+        </div>
       </section>
 
-      <!-- Rows containers for dynamic carousel injections -->
-      <section class="rows-container" id="rows-container">
-        <!-- Javascript injects carousels here -->
-      </section>
+      <!-- MOVIE ROWS CONTAINER (injected by JS) -->
+      <section id="rows-section" class="rows-section"></section>
 
     </main>
 
-    <!-- Expandable Search Results Container -->
-    <section id="search-grid-container" class="search-grid-container hidden">
+    <!-- SEARCH RESULTS -->
+    <section id="search-section" class="search-section hidden">
       <div class="search-header">
-        <h2>Search results for: "<span id="search-query-text"></span>"</h2>
+        <h2>Search results for: "<span id="search-query-label"></span>"</h2>
       </div>
-      <div class="search-results-grid" id="search-results-grid">
-        <!-- Javascript injects search cards here -->
-      </div>
+      <div class="search-grid" id="search-grid"></div>
     </section>
 
-    <!-- Detailed Movie Overlay Modal -->
-    <div id="movie-modal" class="movie-modal hidden">
-      <div class="modal-backdrop" id="modal-backdrop-trigger"></div>
-      <div class="modal-content">
-        <!-- Close button overlay -->
-        <button class="modal-close-btn" id="modal-close-btn" aria-label="Close detail modal">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+    <!-- MY LIST -->
+    <section id="mylist-section" class="mylist-section hidden">
+      <h2 class="section-title">My List</h2>
+      <div class="mylist-grid" id="mylist-grid"></div>
+    </section>
 
-        <!-- Video player container -->
-        <div class="modal-video-container">
-          <div id="modal-video-player" class="modal-video-player"></div>
-          <img id="modal-backdrop-img" class="modal-backdrop-img" src="" alt="Modal backdrop spacer" width="1280" height="720">
-          <div class="modal-video-fade"></div>
-          
-          <div class="modal-video-info-overlay">
-            <h2 class="modal-movie-title" id="modal-movie-title">Movie Title</h2>
-            <div class="modal-action-row">
-              <button class="modal-play-btn" id="modal-play-btn">
-                <i class="fa-solid fa-play"></i> Play
-              </button>
-              <button class="modal-round-btn tooltip" id="modal-add-list-btn" aria-label="Add to My List">
+    <!-- DETAIL MODAL -->
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-backdrop" id="modal-backdrop"></div>
+      <div class="modal-box" id="modal-box">
+        <button class="modal-close-btn" id="modal-close-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+
+        <!-- VIDEO / BACKDROP -->
+        <div class="modal-media">
+          <img id="modal-backdrop-img" src="" alt="" class="modal-backdrop-img">
+          <div id="modal-player" class="modal-player"></div>
+          <div class="modal-media-fade"></div>
+          <div class="modal-media-info">
+            <h2 id="modal-title" class="modal-title"></h2>
+            <div class="modal-actions-row">
+              <button class="modal-play-btn" id="modal-play-btn"><i class="fa-solid fa-play"></i> Play</button>
+              <button class="modal-icon-btn tooltip-wrap" id="modal-list-btn" aria-label="Add to My List">
                 <i class="fa-solid fa-plus"></i>
-                <span class="tooltiptext">Add to My List</span>
+                <span class="tooltip-text">Add to My List</span>
               </button>
-              <button class="modal-round-btn tooltip" id="modal-like-btn" aria-label="Like this video">
+              <button class="modal-icon-btn tooltip-wrap" id="modal-like-btn" aria-label="Like">
                 <i class="fa-regular fa-thumbs-up"></i>
-                <span class="tooltiptext">Like</span>
+                <span class="tooltip-text">Like</span>
               </button>
-              <button class="modal-round-btn sound-btn tooltip" id="modal-mute-btn" aria-label="Mute/Unmute sound">
+              <button class="modal-icon-btn sound-btn tooltip-wrap hidden" id="modal-sound-btn" aria-label="Unmute">
                 <i class="fa-solid fa-volume-xmark"></i>
-                <span class="tooltiptext">Unmute</span>
+                <span class="tooltip-text">Unmute</span>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Movie detail descriptions -->
-        <div class="modal-details-body">
+        <!-- DETAILS -->
+        <div class="modal-details">
           <div class="modal-details-left">
-            <div class="modal-info-meta">
-              <span class="match-score" id="modal-match">95% Match</span>
-              <span class="year" id="modal-year">2023</span>
-              <span class="age-limit" id="modal-age-rating">13+</span>
-              <span class="runtime" id="modal-duration">2h 15m</span>
-              <span class="quality-tag">HD</span>
+            <div class="modal-info-row">
+              <span class="modal-match" id="modal-match"></span>
+              <span class="modal-year" id="modal-year"></span>
+              <span class="modal-age" id="modal-age"></span>
+              <span class="modal-duration" id="modal-duration"></span>
+              <span class="hd-badge">HD</span>
             </div>
-            
-            <p class="modal-overview" id="modal-overview">
-              This is where the high-quality, comprehensive movie synopsis goes, highlighting characters, themes, and plot points to hook the user.
-            </p>
+            <p class="modal-overview" id="modal-overview"></p>
           </div>
-
           <div class="modal-details-right">
-            <div class="detail-crew-item">
-              <span class="label">Cast:</span> <span class="val" id="modal-cast">Actor A, Actor B, Actor C</span>
-            </div>
-            <div class="detail-crew-item">
-              <span class="label">Genres:</span> <span class="val" id="modal-genres">Sci-Fi, Action, Thriller</span>
-            </div>
-            <div class="detail-crew-item">
-              <span class="label">This movie is:</span> <span class="val" id="modal-vibe">Suspenseful, Exciting</span>
-            </div>
+            <p><span class="meta-label">Cast: </span><span id="modal-cast" class="meta-value"></span></p>
+            <p><span class="meta-label">Genres: </span><span id="modal-genres" class="meta-value"></span></p>
+            <p><span class="meta-label">This show is: </span><span id="modal-tags" class="meta-value"></span></p>
           </div>
         </div>
 
-        <!-- Recommendations rows -->
-        <div class="modal-recommendations-section">
+        <!-- MORE LIKE THIS -->
+        <div class="modal-similar-section">
           <h3>More Like This</h3>
-          <div class="recommendations-grid" id="modal-recommendations-grid">
-            <!-- Injected dynamically via JS -->
-          </div>
+          <div class="modal-similar-grid" id="modal-similar-grid"></div>
         </div>
       </div>
     </div>
 
-    <!-- Netflix Brand Footer -->
-    <footer class="netflix-footer">
+    <!-- TOAST -->
+    <div id="toast" class="toast" aria-live="polite" role="status">
+      <i class="fa-solid fa-circle-check"></i>
+      <span id="toast-msg"></span>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
       <div class="footer-socials">
         <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
         <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
         <a href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
         <a href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
       </div>
-      
-      <div class="footer-links-grid">
-        <ul class="footer-column">
-          <li><a href="#">Audio Description</a></li>
-          <li><a href="#">Investor Relations</a></li>
-          <li><a href="#">Legal Notices</a></li>
-        </ul>
-        <ul class="footer-column">
-          <li><a href="#">Help Center</a></li>
-          <li><a href="#">Jobs</a></li>
-          <li><a href="#">Privacy</a></li>
-        </ul>
-        <ul class="footer-column">
-          <li><a href="#">Gift Cards</a></li>
-          <li><a href="#">Terms of Use</a></li>
-          <li><a href="#">Corporate Information</a></li>
-        </ul>
-        <ul class="footer-column">
-          <li><a href="#">Media Center</a></li>
-          <li><a href="#">Shop</a></li>
-          <li><a href="#">Contact Us</a></li>
-        </ul>
+      <div class="footer-links">
+        <div class="footer-col">
+          <a href="#">Audio Description</a>
+          <a href="#">Investor Relations</a>
+          <a href="#">Legal Notices</a>
+        </div>
+        <div class="footer-col">
+          <a href="#">Help Center</a>
+          <a href="#">Jobs</a>
+          <a href="#">Privacy</a>
+        </div>
+        <div class="footer-col">
+          <a href="#">Gift Cards</a>
+          <a href="#">Terms of Use</a>
+          <a href="#">Corporate Information</a>
+        </div>
+        <div class="footer-col">
+          <a href="#">Media Center</a>
+          <a href="#">Shop</a>
+          <a href="#">Contact Us</a>
+        </div>
       </div>
-      
-      <div class="footer-service-btn-container">
-        <button class="footer-service-btn">Service Code</button>
-      </div>
-      
-      <div class="footer-copyright">
-        &copy; 1997-2026 Netflix, Inc. Built for Pair Programming Redesign Project.
-      </div>
+      <p class="footer-copy">&copy; 1997-2026 Netflix, Inc.</p>
     </footer>
 
-  </div>
+  </div><!-- /#app -->
 
-  <!-- Toast Notification Alert -->
-  <div id="toast-notification" class="toast-notification" aria-live="polite">
-    <i class="fa-solid fa-circle-info"></i>
-    <span id="toast-message">Notification Message</span>
-  </div>
-
-  <!-- Production App Script -->
-  <script src="app.min.js?v=3" defer></script>
+  <script src="app.min.js?v=4" defer></script>
 </body>
 </html>
