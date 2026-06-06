@@ -14,7 +14,7 @@
   --text-match: #46d369;
   --navbar-height: 68px;
   --transition-speed: 0.3s;
-  --font-primary: 'Outfit', 'Outfit-fallback', sans-serif;
+  --font-primary: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-logo: 'Bebas Neue', sans-serif;
 }
 
@@ -712,8 +712,9 @@ button {
   overflow-x: auto;
   overflow-y: visible;
   scroll-behavior: smooth;
-  padding: 10px 0 10px;
-  margin-bottom: 0;
+  padding: 40px 0;
+  margin: -30px 0 -10px 0;
+  scrollbar-width: none; /* Hide scrollbar in Firefox */
 }
 
 .row-cards-container::-webkit-scrollbar {
@@ -738,11 +739,38 @@ button {
   object-fit: cover;
   border-radius: 4px;
   display: block;
+  transition: border-radius 0.2s ease;
 }
 
 .movie-card:hover {
-  transform: none;
-  z-index: 200;
+  transform: scale(1.3) translateY(-8%);
+  z-index: 200 !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
+}
+
+.movie-card:hover img {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.card-hover-details {
+  position: absolute;
+  top: 99%;
+  left: 0;
+  right: 0;
+  background: #181818;
+  padding: 12px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  z-index: 201;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.85);
+  pointer-events: none;
 }
 
 .movie-card:hover .card-hover-details,
@@ -750,31 +778,7 @@ button {
 .movie-card:focus-within .card-hover-details {
   opacity: 1;
   visibility: visible;
-}
-
-.card-hover-details {
-  position: absolute;
-  top: 0;
-  left: -15%;
-  right: -15%;
-  background: #181818;
-  padding: 12px;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s, transform 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-radius: 6px;
-  z-index: 201;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.9);
   pointer-events: auto;
-  transform: scaleY(0);
-  transform-origin: top center;
-}
-
-.movie-card:hover .card-hover-details {
-  transform: scaleY(1);
 }
 
 .card-action-row {
@@ -800,6 +804,10 @@ button {
 .card-btn:hover {
   background-color: rgba(255, 255, 255, 0.2);
   border-color: #ffffff;
+}
+
+.more-info-btn {
+  margin-left: auto;
 }
 
 .card-play-btn {
@@ -849,7 +857,7 @@ button {
 }
 
 .netflix-originals-row .movie-card:hover {
-  transform: none;
+  transform: scale(1.3) translateY(-4%);
 }
 
 /* ------------------ TOOLTIPS ------------------ */
@@ -937,20 +945,33 @@ button {
 }
 
 .top-10-card:hover {
-  transform: none;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.8);
-  z-index: 100;
+  transform: scale(1.25) translateY(-4%);
+  z-index: 200 !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
 }
 
-.top-10-card:hover ~ * {
-  position: relative;
-  z-index: 1;
+.top-10-card:hover img {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .top-10-hover-details {
+  position: absolute;
+  top: 99%;
   left: 75px; 
-  right: 0;
-  width: 155px;
+  width: 135px;
+  background: #181818;
+  padding: 12px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.85);
+  pointer-events: none;
   z-index: 201;
 }
 
@@ -959,7 +980,7 @@ button {
 .top-10-card:focus-within .top-10-hover-details {
   opacity: 1;
   visibility: visible;
-  z-index: 202;
+  pointer-events: auto;
 }
 
 /* ------------------ SEARCH GRID ------------------ */

@@ -150,13 +150,21 @@ function setupUIEventListeners() {
   searchBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     searchContainer.classList.toggle('active');
-    if (searchContainer.classList.contains('active')) searchInput.focus();
+    if (searchContainer.classList.contains('active')) {
+      searchInput.focus();
+    } else {
+      searchInput.value = '';
+      triggerSearch('');
+    }
   });
 
   document.addEventListener('click', (e) => {
-    if (!searchContainer.contains(e.target) && searchInput.value === '') {
-      searchContainer.classList.remove('active');
-      triggerSearch('');
+    if (!searchContainer.contains(e.target)) {
+      if (searchContainer.classList.contains('active')) {
+        searchContainer.classList.remove('active');
+        searchInput.value = '';
+        triggerSearch('');
+      }
     }
   });
 
@@ -472,6 +480,22 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
     img.onerror = () => { img.src = `https://image.tmdb.org/t/p/w342${movie.poster_path || movie.backdrop_path}`; };
     card.appendChild(img);
 
+    // Dynamic scale transform origin setup based on screen bounds
+    card.addEventListener('mouseenter', () => {
+      const rect = card.getBoundingClientRect();
+      if (rect.left < 60) {
+        card.style.transformOrigin = 'left center';
+      } else if (window.innerWidth - rect.right < 60) {
+        card.style.transformOrigin = 'right center';
+      } else {
+        card.style.transformOrigin = 'center center';
+      }
+    });
+
+    card.addEventListener('mouseleave', () => {
+      card.style.transformOrigin = '';
+    });
+
     // Keyboard trigger
     card.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -490,6 +514,7 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
       <button class="card-btn card-play-btn" aria-label="Play"><i class="fa-solid fa-play"></i></button>
       <button class="card-btn add-to-list-btn tooltip" data-id="${movie.id}" aria-label="Add to List"><i class="fa-solid fa-plus"></i><span class="tooltiptext">Add to List</span></button>
       <button class="card-btn like-btn tooltip" aria-label="Like"><i class="fa-regular fa-thumbs-up"></i><span class="tooltiptext">Like</span></button>
+      <button class="card-btn more-info-btn tooltip" aria-label="More Info"><i class="fa-solid fa-chevron-down"></i><span class="tooltiptext">More Info</span></button>
     `;
     hoverDetails.appendChild(actionRow);
 
@@ -537,7 +562,15 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
       applyLikedState(likeBtn, movie.id);
       likeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        toggleLiked(movie.id, likeBtn);
+        toggleLikeButton(likeBtn, movie.id);
+      });
+    }
+
+    const moreInfoBtn = hoverDetails.querySelector('.more-info-btn');
+    if (moreInfoBtn) {
+      moreInfoBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openMovieModal(movie.id, resolvedType);
       });
     }
 
@@ -628,6 +661,22 @@ async function renderTop10Row(title, endpoint) {
     img.height = 200;
     card.appendChild(img);
 
+    // Dynamic scale transform origin setup based on screen bounds
+    card.addEventListener('mouseenter', () => {
+      const rect = card.getBoundingClientRect();
+      if (rect.left < 60) {
+        card.style.transformOrigin = 'left center';
+      } else if (window.innerWidth - rect.right < 60) {
+        card.style.transformOrigin = 'right center';
+      } else {
+        card.style.transformOrigin = 'center center';
+      }
+    });
+
+    card.addEventListener('mouseleave', () => {
+      card.style.transformOrigin = '';
+    });
+
     // Keyboard trigger
     card.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -649,6 +698,7 @@ async function renderTop10Row(title, endpoint) {
         <button class="card-btn card-play-btn" aria-label="Play"><i class="fa-solid fa-play"></i></button>
         <button class="card-btn add-to-list-btn tooltip" data-id="${movie.id}" aria-label="Add to List"><i class="fa-solid fa-plus"></i><span class="tooltiptext">Add to List</span></button>
         <button class="card-btn like-btn tooltip" aria-label="Like"><i class="fa-regular fa-thumbs-up"></i><span class="tooltiptext">Like</span></button>
+        <button class="card-btn more-info-btn tooltip" aria-label="More Info"><i class="fa-solid fa-chevron-down"></i><span class="tooltiptext">More Info</span></button>
       </div>
       <div class="card-meta">
         <span class="card-match">${matchPct}% Match</span>
@@ -676,6 +726,22 @@ async function renderTop10Row(title, endpoint) {
       likeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleLikeButton(likeBtn, movie.id);
+      });
+    }
+
+    const moreInfoBtn = hoverDetails.querySelector('.more-info-btn');
+    if (moreInfoBtn) {
+      moreInfoBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openMovieModal(movie.id, movie.media_type || 'movie');
+      });
+    }
+
+    const playBtn = hoverDetails.querySelector('.card-play-btn');
+    if (playBtn) {
+      playBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openMovieModal(movie.id, movie.media_type || 'movie');
       });
     }
 
@@ -931,6 +997,22 @@ function triggerSearch(query) {
       img.height = 135;
       card.appendChild(img);
 
+      // Dynamic scale transform origin setup based on screen bounds
+      card.addEventListener('mouseenter', () => {
+        const rect = card.getBoundingClientRect();
+        if (rect.left < 60) {
+          card.style.transformOrigin = 'left center';
+        } else if (window.innerWidth - rect.right < 60) {
+          card.style.transformOrigin = 'right center';
+        } else {
+          card.style.transformOrigin = 'center center';
+        }
+      });
+
+      card.addEventListener('mouseleave', () => {
+        card.style.transformOrigin = '';
+      });
+
       // Keyboard trigger
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -951,6 +1033,7 @@ function triggerSearch(query) {
           <button class="card-btn card-play-btn" aria-label="Play"><i class="fa-solid fa-play"></i></button>
           <button class="card-btn add-to-list-btn tooltip" data-id="${movie.id}" aria-label="Add to List"><i class="fa-solid fa-plus"></i><span class="tooltiptext">Add to List</span></button>
           <button class="card-btn like-btn tooltip" aria-label="Like"><i class="fa-regular fa-thumbs-up"></i><span class="tooltiptext">Like</span></button>
+          <button class="card-btn more-info-btn tooltip" aria-label="More Info"><i class="fa-solid fa-chevron-down"></i><span class="tooltiptext">More Info</span></button>
         </div>
         <div class="card-meta">
           <span class="card-match">${matchPct}% Match</span>
@@ -978,6 +1061,22 @@ function triggerSearch(query) {
         likeBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           toggleLikeButton(likeBtn, movie.id);
+        });
+      }
+
+      const moreInfoBtn = hoverDetails.querySelector('.more-info-btn');
+      if (moreInfoBtn) {
+        moreInfoBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openMovieModal(movie.id, movie.media_type || 'movie');
+        });
+      }
+
+      const playBtn = hoverDetails.querySelector('.card-play-btn');
+      if (playBtn) {
+        playBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openMovieModal(movie.id, movie.media_type || 'movie');
         });
       }
 
@@ -1370,6 +1469,22 @@ async function showMyListFeed() {
       img.height = 135;
       card.appendChild(img);
 
+      // Dynamic scale transform origin setup based on screen bounds
+      card.addEventListener('mouseenter', () => {
+        const rect = card.getBoundingClientRect();
+        if (rect.left < 60) {
+          card.style.transformOrigin = 'left center';
+        } else if (window.innerWidth - rect.right < 60) {
+          card.style.transformOrigin = 'right center';
+        } else {
+          card.style.transformOrigin = 'center center';
+        }
+      });
+
+      card.addEventListener('mouseleave', () => {
+        card.style.transformOrigin = '';
+      });
+
       // Keyboard trigger
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -1393,6 +1508,7 @@ async function showMyListFeed() {
             <span class="tooltiptext">Remove from List</span>
           </button>
           <button class="card-btn like-btn tooltip" aria-label="Like"><i class="fa-regular fa-thumbs-up"></i><span class="tooltiptext">Like</span></button>
+          <button class="card-btn more-info-btn tooltip" aria-label="More Info"><i class="fa-solid fa-chevron-down"></i><span class="tooltiptext">More Info</span></button>
         </div>
         <div class="card-meta">
           <span class="card-match">${matchPct}% Match</span>
@@ -1417,6 +1533,22 @@ async function showMyListFeed() {
         likeBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           toggleLikeButton(likeBtn, movie.id);
+        });
+      }
+
+      const moreInfoBtn = hoverDetails.querySelector('.more-info-btn');
+      if (moreInfoBtn) {
+        moreInfoBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openMovieModal(movie.id, type);
+        });
+      }
+
+      const playBtn = hoverDetails.querySelector('.card-play-btn');
+      if (playBtn) {
+        playBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openMovieModal(movie.id, type);
         });
       }
 

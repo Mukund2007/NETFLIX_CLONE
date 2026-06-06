@@ -1,8 +1,9 @@
-/**
- * Netlify Serverless Function: TMDB Proxy
- * Proxies TMDB API requests from the frontend client to TMDB,
- * injecting the secure API key server-side.
- */
+const dns = require('dns');
+if (dns && dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
+
 
 exports.handler = async function(event, context) {
   // WARNING: This function uses the global fetch API which requires Node 18+.
@@ -49,25 +50,53 @@ exports.handler = async function(event, context) {
     fullUrl += `&${decodeURIComponent(params)}`;
   }
 
-  try {
-    // Perform standard fetch using Node's global fetch API (Node 18+)
-    const response = await fetch(fullUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      }
-    });
+  const maxRetries = 3;
+  let response;
+  let lastError;
 
-    if (!response.ok) {
-      return {
-        statusCode: response.status,
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`DEBUG - Fetching TMDB URL (Attempt ${attempt}/${maxRetries}):`, fullUrl);
+      response = await fetch(fullUrl, {
+        method: 'GET',
         headers: {
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({ error: `TMDB API returned HTTP status ${response.status}` }),
-      };
+          'Accept': 'application/json',
+        }
+      });
+      if (response.ok) {
+        break;
+      }
+      lastError = new Error(`TMDB API returned HTTP status ${response.status}`);
+      if (response.status === 429 || response.status >= 500) {
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 150));
+          continue;
+        }
+      }
+      break;
+    } catch (error) {
+      lastError = error;
+      console.warn(`DEBUG - Attempt ${attempt} failed with:`, error.message);
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, attempt * 150));
+      }
     }
-    
+  }
+
+  if (!response || !response.ok) {
+    const errStatus = response ? response.status : 500;
+    const errMsg = lastError ? lastError.message : 'Unknown error during fetch';
+    console.error(`DEBUG - All attempts failed for TMDB fetch. Status: ${errStatus}, Error: ${errMsg}`);
+    return {
+      statusCode: errStatus,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+      },
+      body: JSON.stringify({ error: errMsg }),
+    };
+  }
+
+  try {
     const data = await response.json();
     return {
       statusCode: 200,
@@ -77,13 +106,14 @@ exports.handler = async function(event, context) {
       },
       body: JSON.stringify(data),
     };
-  } catch (error) {
+  } catch (parseError) {
+    console.error("DEBUG - Parsing TMDB JSON failed:", parseError);
     return {
       statusCode: 500,
       headers: {
         'Access-Control-Allow-Origin': '*',
       },
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({ error: 'Failed to parse JSON response from TMDB' }),
     };
   }
 };
