@@ -34,7 +34,9 @@ const requests = {
   fetchSciFiMovies: '/discover/movie?with_genres=878',
   fetchHorrorMovies: '/discover/movie?with_genres=27',
   fetchRomanceMovies: '/discover/movie?with_genres=10749',
-  fetchThrillerMovies: '/discover/movie?with_genres=53'
+  fetchThrillerMovies: '/discover/movie?with_genres=53',
+  fetchComedyMovies: '/discover/movie?with_genres=35',
+  fetchDocumentaries: '/discover/movie?with_genres=99'
 };
 
 // Storage helpers
@@ -1350,11 +1352,13 @@ async function showHomeFeed() {
   }
 
   await renderTop10Row('Top 10 Trending Today', requests.fetchTrendingToday);
-  await renderMovieRow('Action Thrillers', requests.fetchActionMovies, false);
-  await renderMovieRow('Sci-Fi Specials', requests.fetchSciFiMovies, false);
-  await renderMovieRow('Scary Horror Movies', requests.fetchHorrorMovies, false);
-  await renderMovieRow('Romance Classics', requests.fetchRomanceMovies, false);
-  await renderMovieRow('Psychological Thrillers', requests.fetchThrillerMovies, false);
+  await renderMovieRow('Horror Movies', requests.fetchHorrorMovies, false);
+  await renderMovieRow('Romance Movies', requests.fetchRomanceMovies, false);
+  await renderMovieRow('Action Movies', requests.fetchActionMovies, false);
+  await renderMovieRow('Thriller Movies', requests.fetchThrillerMovies, false);
+  await renderMovieRow('Sci-Fi Movies', requests.fetchSciFiMovies, false);
+  await renderMovieRow('Comedy Movies', requests.fetchComedyMovies, false);
+  await renderMovieRow('Documentaries', requests.fetchDocumentaries, false);
 }
 
 async function showTVFeed() {
@@ -1383,11 +1387,12 @@ async function showMoviesFeed() {
   }
 
   await renderMovieRow('Trending Movies', '/trending/movie/week', false);
-  await renderMovieRow('Top Rated Movies', '/movie/top_rated', false);
-  await renderMovieRow('Action Thrillers', requests.fetchActionMovies, false);
-  await renderMovieRow('Sci-Fi Specials', requests.fetchSciFiMovies, false);
-  await renderMovieRow('Scary Horror Movies', requests.fetchHorrorMovies, false);
-  await renderMovieRow('Romance Classics', requests.fetchRomanceMovies, false);
+  await renderMovieRow('Horror Movies', requests.fetchHorrorMovies, false);
+  await renderMovieRow('Romance Movies', requests.fetchRomanceMovies, false);
+  await renderMovieRow('Action Movies', requests.fetchActionMovies, false);
+  await renderMovieRow('Thriller Movies', requests.fetchThrillerMovies, false);
+  await renderMovieRow('Sci-Fi Movies', requests.fetchSciFiMovies, false);
+  await renderMovieRow('Comedy Movies', requests.fetchComedyMovies, false);
 }
 
 async function showLatestFeed() {
