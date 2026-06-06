@@ -741,29 +741,8 @@ button {
 }
 
 .movie-card:hover {
-  transform: scale(1.05);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.8);
+  transform: none;
   z-index: 200;
-}
-
-.card-hover-details {
-  position: absolute;
-  top: calc(100% - 2px);
-  left: -10%;
-  right: -10%;
-  background: #181818;
-  padding: 12px;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-bottom-left-radius: 6px;
-  border-bottom-right-radius: 6px;
-  z-index: 201;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.9);
-  pointer-events: auto;
 }
 
 .movie-card:hover .card-hover-details,
@@ -771,6 +750,31 @@ button {
 .movie-card:focus-within .card-hover-details {
   opacity: 1;
   visibility: visible;
+}
+
+.card-hover-details {
+  position: absolute;
+  top: 0;
+  left: -15%;
+  right: -15%;
+  background: #181818;
+  padding: 12px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s, transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 6px;
+  z-index: 201;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.9);
+  pointer-events: auto;
+  transform: scaleY(0);
+  transform-origin: top center;
+}
+
+.movie-card:hover .card-hover-details {
+  transform: scaleY(1);
 }
 
 .card-action-row {
@@ -845,7 +849,7 @@ button {
 }
 
 .netflix-originals-row .movie-card:hover {
-  transform: scale(1.05);
+  transform: none;
 }
 
 /* ------------------ TOOLTIPS ------------------ */
@@ -933,7 +937,7 @@ button {
 }
 
 .top-10-card:hover {
-  transform: scale(1.05);
+  transform: none;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.8);
   z-index: 100;
 }

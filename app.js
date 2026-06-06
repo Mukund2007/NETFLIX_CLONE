@@ -451,13 +451,7 @@ async function renderMovieRow(title, endpoint, isLarge = false) {
     card.setAttribute('role', 'button');
     card.setAttribute('aria-label', movie.title || movie.name || 'Movie Card');
 
-    // Toggle row hover state to prevent horizontal/vertical card clipping
-    card.addEventListener('mouseenter', () => {
-      rowDiv.classList.add('row-hovered');
-    });
-    card.addEventListener('mouseleave', () => {
-      rowDiv.classList.remove('row-hovered');
-    });
+
 
     const isMobile = window.innerWidth <= 768;
     let imgSize = 'w342';
@@ -616,13 +610,7 @@ async function renderTop10Row(title, endpoint) {
     card.setAttribute('role', 'button');
     card.setAttribute('aria-label', movie.title || movie.name || `Top ${index + 1} Title`);
 
-    // Toggle row hover state to prevent horizontal/vertical card clipping
-    card.addEventListener('mouseenter', () => {
-      rowDiv.classList.add('row-hovered');
-    });
-    card.addEventListener('mouseleave', () => {
-      rowDiv.classList.remove('row-hovered');
-    });
+
 
     const numSpan = document.createElement('span');
     numSpan.className = 'top-10-number';
