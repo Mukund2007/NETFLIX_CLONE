@@ -61,48 +61,7 @@ async function tmdb(endpoint) {
   }
 }
 
-// ─── PROFILE SCREEN ────────────────────────────────────────────────────────────
-function initProfileScreen() {
-  const screen = document.getElementById('profile-screen');
-  const app    = document.getElementById('app');
 
-  function selectProfile(type) {
-    screen.classList.add('fade-out');
-    setTimeout(() => {
-      screen.style.display = 'none';
-      app.classList.remove('hidden');
-      requestAnimationFrame(() => app.classList.add('visible'));
-      sessionStorage.setItem('profile', type);
-      loadHomeFeed();
-    }, 500);
-  }
-
-  document.getElementById('btn-profile-user').addEventListener('click', () => selectProfile('user'));
-  document.getElementById('btn-profile-kids').addEventListener('click', () => selectProfile('kids'));
-
-  // Profile dropdown sign out
-  document.getElementById('dd-signout').addEventListener('click', (e) => {
-    e.preventDefault();
-    sessionStorage.removeItem('profile');
-    screen.style.display = '';
-    screen.classList.remove('fade-out');
-    app.classList.remove('visible');
-    setTimeout(() => app.classList.add('hidden'), 100);
-    toast('Signed out');
-  });
-
-  document.getElementById('dd-switch-user').addEventListener('click', () => selectProfile('user'));
-  document.getElementById('dd-switch-kids').addEventListener('click', () => selectProfile('kids'));
-
-  // Resume session if already logged in
-  const existing = sessionStorage.getItem('profile');
-  if (existing) {
-    screen.style.display = 'none';
-    app.classList.remove('hidden');
-    requestAnimationFrame(() => app.classList.add('visible'));
-    loadHomeFeed();
-  }
-}
 
 // ─── NAVBAR ────────────────────────────────────────────────────────────────────
 function initNavbar() {
@@ -1007,46 +966,45 @@ function closeModal() {
 }
 
 // ─── BOOTSTRAP ─────────────────────────────────────────────────────────────────
-function loadHomeFeed() {
-  const main    = document.getElementById('main-content');
-  const search  = document.getElementById('search-section');
-  const mylist  = document.getElementById('mylist-section');
-  const heroEl  = document.getElementById('hero-section');
+document.addEventListener('DOMContentLoaded', () => {
+  const screen = document.getElementById('profile-screen');
+  const app    = document.getElementById('app');
 
-  main?.classList.remove('hidden');
-  search?.classList.add('hidden');
-  mylist?.classList.add('hidden');
-  if (heroEl) heroEl.style.display = '';
-  window.scrollTo({ top: 0 });
+  // Always skip profile screen - go straight to app
+  if (screen) screen.style.display = 'none';
+  if (app) {
+    app.classList.remove('hidden');
+    requestAnimationFrame(() => app.classList.add('visible'));
+  }
 
-  clearRows();
-  setActiveLink('link-home');
-
-  // 1. Hero: Now Playing movies
-  tmdb('/movie/now_playing?language=en-US&page=1').then(data => {
-    renderHero(data?.results || [], 'movie');
+  // Profile screen click handlers (if user wants to switch profiles)
+  document.getElementById('btn-profile-user')?.addEventListener('click', () => {
+    if (screen) { screen.classList.add('fade-out'); setTimeout(() => { screen.style.display = 'none'; }, 500); }
+    loadHomeFeed();
   });
 
-  // 2. Rows (rendered in order)
-  renderTop10Row('Top 10 Trending Today', '/trending/all/day');
-  renderRow('New Releases',       '/movie/now_playing?language=en-US&page=1');
-  renderRow('Trending This Week', '/trending/movie/week');
-  renderRow('Horror Movies',      '/discover/movie?with_genres=27&sort_by=popularity.desc');
-  renderRow('Romantic Movies',    '/discover/movie?with_genres=10749&sort_by=popularity.desc');
-  renderRow('Action Movies',      '/discover/movie?with_genres=28&sort_by=popularity.desc');
-  renderRow('Thriller Movies',    '/discover/movie?with_genres=53&sort_by=popularity.desc');
-  renderRow('Sci-Fi Movies',      '/discover/movie?with_genres=878&sort_by=popularity.desc');
-  renderRow('Comedy Movies',      '/discover/movie?with_genres=35&sort_by=popularity.desc');
-  renderRow('Documentaries',      '/discover/movie?with_genres=99&sort_by=popularity.desc');
-  renderRow('Award-Winning Films','/discover/movie?sort_by=vote_average.desc&vote_count.gte=5000');
-}
+  document.getElementById('btn-profile-kids')?.addEventListener('click', () => {
+    if (screen) { screen.classList.add('fade-out'); setTimeout(() => { screen.style.display = 'none'; }, 500); }
+    loadKidsFeed();
+  });
 
-document.addEventListener('DOMContentLoaded', () => {
-  initProfileScreen();
+  document.getElementById('dd-signout')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (screen) { screen.style.display = ''; screen.classList.remove('fade-out'); }
+    toast('Signed out');
+  });
+
+  document.getElementById('dd-switch-user')?.addEventListener('click', () => loadHomeFeed());
+  document.getElementById('dd-switch-kids')?.addEventListener('click', () => loadKidsFeed());
+
   initNavbar();
 
   // Modal close
   document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
   document.getElementById('modal-backdrop')?.addEventListener('click', closeModal);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // Load home feed immediately
+  loadHomeFeed();
 });
+
