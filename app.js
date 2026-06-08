@@ -6,10 +6,8 @@
 'use strict';
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
-const API_KEY  = '886c34f6272eb20ef6fb36042b0ec4fa';
-const BASE_URL = 'https://api.themoviedb.org/3';
-const PROXY    = '/.netlify/functions/tmdb?path=';
-const IMG      = 'https://image.tmdb.org/t/p';
+const PROXY = '/.netlify/functions/tmdb?path=';
+const IMG   = 'https://image.tmdb.org/t/p';
 
 const GENRE_MAP = {
   28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
@@ -51,23 +49,8 @@ function toast(msg) {
   _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// ─── TMDB FETCH WITH LOCAL FALLBACK ────────────────────────────────────────────
+// ─── TMDB FETCH VIA SERVERLESS PROXY ───────────────────────────────────────────
 async function tmdb(endpoint) {
-  // If running locally via file:// protocol, bypass proxy and hit TMDB directly
-  if (window.location.protocol === 'file:') {
-    const connector = endpoint.includes('?') ? '&' : '?';
-    const url = `${BASE_URL}${endpoint}${connector}api_key=${API_KEY}`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (e) {
-      console.warn('[TMDB Fallback]', endpoint, e.message);
-      return null;
-    }
-  }
-
-  // Otherwise, use secure Netlify serverless proxy
   const url = `${PROXY}${encodeURIComponent(endpoint)}`;
   try {
     const res = await fetch(url);
@@ -75,17 +58,7 @@ async function tmdb(endpoint) {
     return await res.json();
   } catch (e) {
     console.warn('[TMDB Proxy Failed]', endpoint, e.message);
-    // Last-ditch client-side fallback if proxy is down/misconfigured
-    const connector = endpoint.includes('?') ? '&' : '?';
-    const fallbackUrl = `${BASE_URL}${endpoint}${connector}api_key=${API_KEY}`;
-    try {
-      const res = await fetch(fallbackUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (fallbackErr) {
-      console.error('[TMDB Direct Fallback Failed]', endpoint, fallbackErr.message);
-      return null;
-    }
+    return null;
   }
 }
 
