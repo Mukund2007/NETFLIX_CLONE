@@ -1,13 +1,15 @@
 /**
- * Netflix Clone - Complete App Script
- * Sections: Profile Screen → Hero (Now Playing) → Top 10 Trending → Genre Rows
+ * Netflix Clone - Complete App Script (Desktop Version)
+ * Sections: Profile Screen → Hero (Now Playing) → Continue Watching → Top 10 Trending → Genre Rows
  */
 
 'use strict';
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
-const PROXY = '/.netlify/functions/tmdb?path=';
-const IMG   = 'https://image.tmdb.org/t/p';
+const API_KEY  = '886c34f6272eb20ef6fb36042b0ec4fa';
+const BASE_URL = 'https://api.themoviedb.org/3';
+const PROXY    = '/.netlify/functions/tmdb?path=';
+const IMG      = 'https://image.tmdb.org/t/p';
 
 const GENRE_MAP = {
   28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
@@ -17,13 +19,14 @@ const GENRE_MAP = {
   10759: 'Action & Adventure', 10762: 'Kids', 10765: 'Sci-Fi & Fantasy'
 };
 
-const LS_LIST  = 'nfc_mylist';
-const LS_LIKES = 'nfc_likes';
+const LS_LIST     = 'nfc_mylist';
+const LS_LIKES    = 'nfc_likes';
+const LS_CONTINUE = 'nfc_continue';
 
 // ─── STATE ─────────────────────────────────────────────────────────────────────
-let myList  = loadJSON(LS_LIST, []);
-let likes   = new Set(loadJSON(LS_LIKES, []));
-let muted   = true;
+let myList      = loadJSON(LS_LIST, []);
+let likes       = new Set(loadJSON(LS_LIKES, []));
+let muted       = true;
 let searchTimer = null;
 let currentHeroId   = null;
 let currentHeroType = 'movie';
@@ -48,20 +51,65 @@ function toast(msg) {
   _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// ─── TMDB FETCH ────────────────────────────────────────────────────────────────
+// ─── TMDB FETCH WITH LOCAL FALLBACK ────────────────────────────────────────────
 async function tmdb(endpoint) {
+  // If running locally via file:// protocol, bypass proxy and hit TMDB directly
+  if (window.location.protocol === 'file:') {
+    const connector = endpoint.includes('?') ? '&' : '?';
+    const url = `${BASE_URL}${endpoint}${connector}api_key=${API_KEY}`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('[TMDB Fallback]', endpoint, e.message);
+      return null;
+    }
+  }
+
+  // Otherwise, use secure Netlify serverless proxy
   const url = `${PROXY}${encodeURIComponent(endpoint)}`;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (e) {
-    console.warn('[TMDB]', endpoint, e.message);
-    return null;
+    console.warn('[TMDB Proxy Failed]', endpoint, e.message);
+    // Last-ditch client-side fallback if proxy is down/misconfigured
+    const connector = endpoint.includes('?') ? '&' : '?';
+    const fallbackUrl = `${BASE_URL}${endpoint}${connector}api_key=${API_KEY}`;
+    try {
+      const res = await fetch(fallbackUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (fallbackErr) {
+      console.error('[TMDB Direct Fallback Failed]', endpoint, fallbackErr.message);
+      return null;
+    }
   }
 }
 
+// ─── LOADING SCREEN ────────────────────────────────────────────────────────────
+function hideLoadingScreen() {
+  const loader = document.getElementById('loading-screen');
+  if (loader && !loader.classList.contains('hidden')) {
+    loader.classList.add('hidden');
+    setTimeout(() => loader.style.display = 'none', 900);
+  }
+}
 
+// ─── CONTINUE WATCHING STATE ───────────────────────────────────────────────────
+function getContinueList() {
+  return loadJSON(LS_CONTINUE, []);
+}
+
+function addToContinue(item) {
+  let list = getContinueList().filter(m => m.id !== item.id);
+  const progress = item._progress || Math.round(10 + Math.random() * 75);
+  list.unshift({ ...item, _progress: progress });
+  list = list.slice(0, 12); // limit to 12 items
+  saveJSON(LS_CONTINUE, list);
+}
 
 // ─── NAVBAR ────────────────────────────────────────────────────────────────────
 function initNavbar() {
@@ -108,7 +156,6 @@ function initNavbar() {
 
   toggle.addEventListener('click', () => {
     if (wrap.classList.contains('open')) {
-      // close
       wrap.classList.remove('open');
       input.value = '';
       hideSearch();
@@ -151,12 +198,11 @@ function setActiveLink(activeId) {
 }
 
 // ─── FEED LOADER ───────────────────────────────────────────────────────────────
-function loadFeed(type) {
+async function loadFeed(type) {
   const main    = document.getElementById('main-content');
   const search  = document.getElementById('search-section');
   const mylist  = document.getElementById('mylist-section');
 
-  // Always show main by default
   main?.classList.remove('hidden');
   search?.classList.add('hidden');
   mylist?.classList.add('hidden');
@@ -165,15 +211,15 @@ function loadFeed(type) {
   const heroEl = document.getElementById('hero-section');
   if (heroEl) heroEl.style.display = '';
 
-  if (type === 'home') { loadHomeFeed(); return; }
-  if (type === 'tv')   { loadTVFeed();   return; }
-  if (type === 'movies') { loadMoviesFeed(); return; }
-  if (type === 'new')  { loadNewFeed();  return; }
-  if (type === 'kids') { loadKidsFeed(); return; }
+  if (type === 'home') { await loadHomeFeed(); return; }
+  if (type === 'tv')   { await loadTVFeed();   return; }
+  if (type === 'movies') { await loadMoviesFeed(); return; }
+  if (type === 'new')  { await loadNewFeed();  return; }
+  if (type === 'kids') { await loadKidsFeed(); return; }
   if (type === 'mylist') {
-    heroEl.style.display = 'none';
-    main.classList.add('hidden');
-    mylist.classList.remove('hidden');
+    if (heroEl) heroEl.style.display = 'none';
+    if (main) main.classList.add('hidden');
+    mylist?.classList.remove('hidden');
     renderMyList();
     return;
   }
@@ -184,14 +230,21 @@ async function loadHomeFeed() {
   clearRows();
   setActiveLink('link-home');
 
-  // 1. Hero: Recent releases
   const nowPlaying = await tmdb('/movie/now_playing?language=en-US&page=1');
   renderHero(nowPlaying?.results || [], 'movie');
+
+  // 1. Continue Watching (renders first if items exist)
+  renderContinueRow();
 
   // 2. Top 10 Trending
   renderTop10Row('Top 10 in India Today', '/trending/all/day');
 
-  // 3. Genre rows
+  // 3. Indian language rows (discover TMDB content)
+  renderRow('Bollywood Blockbusters', '/discover/movie?with_original_language=hi&sort_by=popularity.desc');
+  renderRow('Tamil Cinema',          '/discover/movie?with_original_language=ta&sort_by=popularity.desc');
+  renderRow('Telugu Hits',           '/discover/movie?with_original_language=te&sort_by=popularity.desc');
+
+  // 4. Genre rows
   renderRow('New Releases',      '/movie/now_playing?language=en-US&page=1');
   renderRow('Trending Now',      '/trending/movie/week');
   renderRow('Horror Movies',     '/discover/movie?with_genres=27&sort_by=popularity.desc');
@@ -291,13 +344,11 @@ function renderHero(movies, defaultType) {
   currentHeroId   = movie.id;
   currentHeroType = type;
 
-  // Show skeleton
   const skeleton = document.getElementById('hero-skeleton');
   const content  = document.getElementById('hero-content');
   if (skeleton) skeleton.style.display = 'flex';
   if (content)  content.style.visibility = 'hidden';
 
-  // Load backdrop image
   const img = document.getElementById('hero-img');
   if (img) {
     img.src = `${IMG}/w1280${movie.backdrop_path}`;
@@ -313,7 +364,6 @@ function renderHero(movies, defaultType) {
     img.alt = movie.title || movie.name || '';
   }
 
-  // Title
   const title = movie.title || movie.name || movie.original_name || 'Unknown Title';
   const el = (id) => document.getElementById(id);
 
@@ -333,21 +383,21 @@ function renderHero(movies, defaultType) {
   const isDrama = genres.includes(18);
   el('hero-duration').textContent = type === 'tv' ? 'Series' : (isDrama ? 'Film' : '');
 
-  // Badge
   const badge = el('hero-badge');
   if (badge) badge.style.display = type === 'tv' ? 'flex' : 'none';
 
-  // Buttons
   const playBtn = el('hero-play-btn');
   const infoBtn = el('hero-info-btn');
   if (playBtn) {
-    playBtn.onclick = () => openModal(currentHeroId, currentHeroType);
+    playBtn.onclick = () => {
+      addToContinue(movie);
+      openModal(currentHeroId, currentHeroType);
+    };
   }
   if (infoBtn) {
     infoBtn.onclick = () => openModal(currentHeroId, currentHeroType);
   }
 
-  // Fetch full details async for better duration/season info
   tmdb(`/${type}/${movie.id}`).then(details => {
     if (!details) return;
     if (type === 'movie' && details.runtime) {
@@ -360,12 +410,11 @@ function renderHero(movies, defaultType) {
   });
 }
 
-// ─── RENDER ROW ────────────────────────────────────────────────────────────────
+// ─── DYNAMIC SCROLL ROWS ───────────────────────────────────────────────────────
 async function renderRow(title, endpoint, isOriginals = false) {
   const container = document.getElementById('rows-section');
   if (!container) return;
 
-  // Create placeholder row immediately
   const rowEl = document.createElement('div');
   rowEl.className = `movie-row${isOriginals ? ' originals-row' : ''}`;
   rowEl.innerHTML = `
@@ -388,11 +437,9 @@ async function renderRow(title, endpoint, isOriginals = false) {
   arrowLeft.addEventListener('click',  () => cardsEl.scrollBy({ left: -cardsEl.offsetWidth * 0.8, behavior: 'smooth' }));
   arrowRight.addEventListener('click', () => cardsEl.scrollBy({ left:  cardsEl.offsetWidth * 0.8, behavior: 'smooth' }));
 
-  // Fetch data
   const data = await tmdb(endpoint);
   if (!data?.results?.length) { rowEl.remove(); return; }
 
-  // Deduplicate
   const seen = new Set();
   const items = data.results.filter(m => {
     if (seen.has(m.id)) return false;
@@ -403,6 +450,74 @@ async function renderRow(title, endpoint, isOriginals = false) {
   items.forEach(movie => {
     const card = createMovieCard(movie, isOriginals);
     cardsEl.appendChild(card);
+  });
+}
+
+// ─── RENDER CONTINUE WATCHING ROW ──────────────────────────────────────────────
+function renderContinueRow() {
+  const list = getContinueList();
+  if (list.length === 0) return;
+
+  const container = document.getElementById('rows-section');
+  if (!container) return;
+
+  const rowEl = document.createElement('div');
+  rowEl.className = 'movie-row continue-row';
+  rowEl.innerHTML = `
+    <div class="row-header">
+      <h2 class="row-title">Continue Watching</h2>
+    </div>
+    <div class="row-scroll-wrap">
+      <button class="row-arrow arrow-left" aria-label="Scroll left"><i class="fa-solid fa-chevron-left"></i></button>
+      <div class="row-cards"></div>
+      <button class="row-arrow arrow-right" aria-label="Scroll right"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+  `;
+  container.insertBefore(rowEl, container.firstChild);
+
+  const cardsEl    = rowEl.querySelector('.row-cards');
+  const arrowLeft  = rowEl.querySelector('.arrow-left');
+  const arrowRight = rowEl.querySelector('.arrow-right');
+
+  arrowLeft.addEventListener('click',  () => cardsEl.scrollBy({ left: -cardsEl.offsetWidth * 0.8, behavior: 'smooth' }));
+  arrowRight.addEventListener('click', () => cardsEl.scrollBy({ left:  cardsEl.offsetWidth * 0.8, behavior: 'smooth' }));
+
+  list.forEach(movie => {
+    const card = createMovieCard(movie, false);
+    // Inject progress bar UI
+    const prog = document.createElement('div');
+    prog.className = 'card-progress';
+    prog.innerHTML = `<div class="card-progress-fill" style="width:${movie._progress || 30}%"></div>`;
+    card.appendChild(prog);
+    cardsEl.appendChild(card);
+  });
+}
+
+// ─── CARD HOVER Z-INDEX & ORIGIN HANDLER ──────────────────────────────────────
+function handleCardHover(card) {
+  card.addEventListener('mouseenter', () => {
+    // Lift the parent row's stacking context above others
+    const row = card.closest('.movie-row');
+    if (row) {
+      row.style.zIndex = '100';
+    }
+
+    // Set correct zoom origin based on screen boundaries
+    const rect = card.getBoundingClientRect();
+    const near = 80;
+    if (rect.left < near) card.style.transformOrigin = 'left center';
+    else if (window.innerWidth - rect.right < near) card.style.transformOrigin = 'right center';
+    else card.style.transformOrigin = 'center center';
+  });
+
+  card.addEventListener('mouseleave', () => {
+    // Restore parent row z-index
+    const row = card.closest('.movie-row');
+    if (row) {
+      row.style.zIndex = '';
+    }
+
+    card.style.transformOrigin = '';
   });
 }
 
@@ -458,23 +573,14 @@ function createMovieCard(movie, isOriginals = false) {
     </div>
   `;
 
-  // Edge detection for transform-origin
-  card.addEventListener('mouseenter', () => {
-    const rect = card.getBoundingClientRect();
-    const near = 80;
-    if (rect.left < near) card.style.transformOrigin = 'left center';
-    else if (window.innerWidth - rect.right < near) card.style.transformOrigin = 'right center';
-    else card.style.transformOrigin = 'center center';
-  });
+  handleCardHover(card, movie, type);
 
-  card.addEventListener('mouseleave', () => {
-    card.style.transformOrigin = '';
-  });
-
-  // Click handler
   card.addEventListener('click', (e) => {
     const action = e.target.closest('[data-action]')?.dataset.action;
-    if (action === 'play' || action === 'more') {
+    if (action === 'play') {
+      addToContinue(movie);
+      openModal(movie.id, type);
+    } else if (action === 'more') {
       openModal(movie.id, type);
     } else if (action === 'list') {
       toggleList(movie, card.querySelector('.list-btn'));
@@ -577,20 +683,20 @@ function createTop10Card(movie, rank) {
     </div>
   `;
 
-  card.addEventListener('mouseenter', () => {
-    const rect = card.getBoundingClientRect();
-    if (rect.left < 80) card.style.transformOrigin = 'left center';
-    else if (window.innerWidth - rect.right < 80) card.style.transformOrigin = 'right center';
-    else card.style.transformOrigin = 'center center';
-  });
-
-  card.addEventListener('mouseleave', () => { card.style.transformOrigin = ''; });
+  handleCardHover(card, movie, type);
 
   card.addEventListener('click', (e) => {
     const action = e.target.closest('[data-action]')?.dataset.action;
-    if (action === 'list') toggleList(movie, card.querySelector('.list-btn'));
-    else if (action === 'like') toggleLike(movie.id, card.querySelector('.like-btn'));
-    else openModal(movie.id, type);
+    if (action === 'play') {
+      addToContinue(movie);
+      openModal(movie.id, type);
+    } else if (action === 'list') {
+      toggleList(movie, card.querySelector('.list-btn'));
+    } else if (action === 'like') {
+      toggleLike(movie.id, card.querySelector('.like-btn'));
+    } else {
+      openModal(movie.id, type);
+    }
   });
 
   card.addEventListener('keydown', e => {
@@ -792,13 +898,32 @@ async function openModal(id, type = 'movie') {
   const soundBtn = document.getElementById('modal-sound-btn');
 
   if (trailer && player) {
+    const isLocalFile = window.location.protocol === 'file:';
     player.innerHTML = `
       <iframe
         id="yt-player"
-        src="https://www.youtube-nocookie.com/embed/${trailer.key}?enablejsapi=1&autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&origin=${origin}"
+        src="https://www.youtube.com/embed/${trailer.key}?enablejsapi=1&autoplay=1&mute=1&controls=1&rel=0&modestbranding=1"
+        referrerpolicy="strict-origin-when-cross-origin"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowfullscreen>
       </iframe>`;
+
+    // Clear any previous warning to prevent duplication
+    document.querySelector('.local-file-warning')?.remove();
+
+    if (isLocalFile) {
+      const warning = document.createElement('div');
+      warning.className = 'local-file-warning';
+      warning.style.cssText = 'position: absolute; top: 70px; left: 30px; background: rgba(0, 0, 0, 0.95); padding: 12px 18px; border-radius: 6px; font-size: 13px; color: #fff; z-index: 100; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); border: 1px solid rgba(229, 9, 20, 0.5); max-width: 80%;';
+      warning.innerHTML = `
+        <i class="fa-solid fa-triangle-exclamation" style="color: #e50914; font-size: 1.1rem;"></i>
+        <div>
+          <span style="font-weight: 600; display: block; margin-bottom: 2px;">Local file protocol constraint</span>
+          <span>YouTube embeds require a server to play. <a href="https://www.youtube.com/watch?v=\${trailer.key}" target="_blank" style="color: #e50914; font-weight: 700; text-decoration: underline; margin-left: 2px;">Watch Trailer on YouTube <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.75rem; margin-left: 2px;"></i></a></span>
+        </div>
+      `;
+      box.appendChild(warning);
+    }
     if (backdropImg) backdropImg.style.display = 'none';
     soundBtn?.classList.remove('hidden');
   } else {
@@ -807,13 +932,14 @@ async function openModal(id, type = 'movie') {
     soundBtn?.classList.add('hidden');
   }
 
-  // Sound toggle
+  // Sound control
   if (soundBtn) {
     soundBtn.onclick = () => {
       const iframe = document.querySelector('#yt-player');
       if (!iframe) return;
       muted = !muted;
       iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: muted ? 'mute' : 'unMute', args: [] }), '*');
+      
       const icon = soundBtn.querySelector('i');
       const tip  = soundBtn.querySelector('.tooltip-text');
       if (icon) icon.className = muted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
@@ -821,8 +947,9 @@ async function openModal(id, type = 'movie') {
     };
   }
 
-  // Play btn
+  // Play button click adds to Continue Watching and plays video
   document.getElementById('modal-play-btn').onclick = () => {
+    addToContinue(details);
     const iframe = document.querySelector('#yt-player');
     if (iframe) {
       iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*');
@@ -835,50 +962,63 @@ async function openModal(id, type = 'movie') {
     }
   };
 
-  // Info
   const title = details.title || details.name || details.original_name;
-  document.getElementById('modal-title').textContent    = title;
+  document.getElementById('modal-title').textContent = title;
   document.getElementById('modal-overview').textContent = details.overview || 'No overview available.';
 
   const matchPct = Math.min(99, Math.floor((details.vote_average || 7) * 10));
-  document.getElementById('modal-match').textContent    = `${matchPct}% Match`;
+  document.getElementById('modal-match').textContent = `${matchPct}% Match`;
 
   const dateStr = details.release_date || details.first_air_date || '';
   document.getElementById('modal-year').textContent = dateStr.slice(0, 4);
 
-  const genreIds = (details.genres || []).map(g => g.id);
-  const age = details.adult ? '18+' : (genreIds.includes(16) || genreIds.includes(10751) ? 'G' : genreIds.includes(27) || genreIds.includes(80) ? '16+' : '13+');
-  document.getElementById('modal-age').textContent = age;
+  const genres = details.genres || [];
+  const genreIds = genres.map(g => g.id);
+  const ageRating = details.adult ? '18+' : (genreIds.includes(16) || genreIds.includes(10751) ? 'G' : genreIds.includes(27) || genreIds.includes(80) ? '16+' : '13+');
+  document.getElementById('modal-age').textContent = ageRating;
 
-  let dur = '';
+  let durationText = '';
   if (resolvedType === 'movie' && details.runtime) {
-    const h = Math.floor(details.runtime / 60), m = details.runtime % 60;
-    dur = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    const h = Math.floor(details.runtime / 60);
+    const m = details.runtime % 60;
+    durationText = h > 0 ? `${h}h ${m}m` : `${m}m`;
   } else if (resolvedType === 'tv' && details.number_of_seasons) {
-    dur = `${details.number_of_seasons} Season${details.number_of_seasons > 1 ? 's' : ''}`;
+    durationText = `${details.number_of_seasons} Season${details.number_of_seasons > 1 ? 's' : ''}`;
   }
-  document.getElementById('modal-duration').textContent = dur;
+  document.getElementById('modal-duration').textContent = durationText;
 
-  const cast = (details.credits?.cast || []).slice(0, 5).map(c => c.name).join(', ');
-  document.getElementById('modal-cast').textContent    = cast || 'N/A';
-  document.getElementById('modal-genres').textContent = (details.genres || []).map(g => g.name).join(', ') || 'N/A';
-  document.getElementById('modal-tags').textContent   = (details.genres || []).slice(0, 2).map(g => g.name).join(', ') || 'N/A';
+  const castNames = (details.credits?.cast || []).slice(0, 5).map(c => c.name).join(', ');
+  document.getElementById('modal-cast').textContent = castNames || 'N/A';
+  
+  const genreNames = genres.map(g => g.name).join(', ');
+  document.getElementById('modal-genres').textContent = genreNames || 'N/A';
+  document.getElementById('modal-tags').textContent = genres.slice(0, 2).map(g => g.name).join(', ') || 'N/A';
 
-  // List btn
+  // Modal Watchlist sync
   const listBtn = document.getElementById('modal-list-btn');
   if (listBtn) {
     listBtn.dataset.id = id;
     const inList = myList.some(m => String(m.id) === String(id));
     updateListBtnModal(listBtn, inList);
     listBtn.onclick = () => {
-      const movie = details;
-      toggleList({ id: Number(id), title, name: details.name, vote_average: details.vote_average, backdrop_path: details.backdrop_path, poster_path: details.poster_path, genre_ids: genreIds, release_date: details.release_date, first_air_date: details.first_air_date, media_type: resolvedType }, listBtn);
+      toggleList({
+        id: Number(id),
+        title,
+        name: details.name,
+        vote_average: details.vote_average,
+        backdrop_path: details.backdrop_path,
+        poster_path: details.poster_path,
+        genre_ids: genreIds,
+        release_date: details.release_date,
+        first_air_date: details.first_air_date,
+        media_type: resolvedType
+      }, listBtn);
       const nowIn = myList.some(m => String(m.id) === String(id));
       updateListBtnModal(listBtn, nowIn);
     };
   }
 
-  // Like btn
+  // Modal Like sync
   const likeBtn = document.getElementById('modal-like-btn');
   if (likeBtn) {
     likeBtn.dataset.id = id;
@@ -887,31 +1027,30 @@ async function openModal(id, type = 'movie') {
     likeBtn.onclick = () => toggleLike(id, likeBtn);
   }
 
-  // Similar grid
+  // Modal Recommendations ("More Like This")
   const simGrid = document.getElementById('modal-similar-grid');
   if (simGrid) {
     simGrid.innerHTML = '';
-    const similars = (details.similar?.results || []).filter(m => m.backdrop_path || m.poster_path).slice(0, 9);
-    if (!similars.length) {
-      simGrid.innerHTML = '<div style="color:#808080;padding:20px">No similar titles found.</div>';
-    } else {
-      similars.forEach(movie => {
+    const recommendations = (details.similar?.results || []).filter(m => m.backdrop_path || m.poster_path).slice(0, 9);
+    if (recommendations.length) {
+      recommendations.forEach(movie => {
         const simCard = createSimilarCard(movie, resolvedType);
         simGrid.appendChild(simCard);
       });
+    } else {
+      simGrid.innerHTML = '<div style="color:#808080;padding:20px">No similar titles found.</div>';
     }
   }
 
-  // Scroll modal to top
   if (box) box.scrollTo({ top: 0 });
 }
 
 function createSimilarCard(movie, type) {
-  const title    = movie.title || movie.name || movie.original_name || '';
+  const title = movie.title || movie.name || movie.original_name || '';
   const matchPct = Math.min(99, Math.floor((movie.vote_average || 7) * 10));
-  const year     = (movie.release_date || movie.first_air_date || '').slice(0, 4);
-  const poster   = movie.backdrop_path || movie.poster_path;
-  const inList   = myList.some(m => m.id === movie.id);
+  const year = (movie.release_date || movie.first_air_date || '').slice(0, 4);
+  const poster = movie.backdrop_path || movie.poster_path;
+  const inList = myList.some(m => m.id === movie.id);
 
   const card = document.createElement('div');
   card.className = 'similar-card';
@@ -958,53 +1097,84 @@ function createSimilarCard(movie, type) {
 }
 
 function closeModal() {
-  const modal  = document.getElementById('modal');
+  const modal = document.getElementById('modal');
   const player = document.getElementById('modal-player');
   modal?.classList.add('hidden');
   if (player) player.innerHTML = '';
   document.body.style.overflow = '';
+  document.querySelector('.local-file-warning')?.remove();
 }
 
-// ─── BOOTSTRAP ─────────────────────────────────────────────────────────────────
+// ─── INIT DOMContentLoaded ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  const screen = document.getElementById('profile-screen');
-  const app    = document.getElementById('app');
+  const profileScreen = document.getElementById('profile-screen');
+  const appEl         = document.getElementById('app');
 
-  // Always skip profile screen - go straight to app
-  if (screen) screen.style.display = 'none';
-  if (app) {
-    app.classList.remove('hidden');
-    requestAnimationFrame(() => app.classList.add('visible'));
+  // Load profile from sessionStorage to skip Who's Watching screen
+  const savedProfile = sessionStorage.getItem('profile');
+  if (savedProfile) {
+    if (profileScreen) profileScreen.style.display = 'none';
+    if (appEl) {
+      appEl.classList.remove('hidden');
+      appEl.classList.add('visible');
+    }
+    loadFeed(savedProfile).then(() => {
+      hideLoadingScreen();
+    });
+  } else {
+    if (profileScreen) profileScreen.style.display = '';
+    if (appEl) {
+      appEl.classList.remove('hidden');
+      appEl.classList.add('visible');
+    }
+    hideLoadingScreen();
   }
 
-  // Profile screen click handlers (if user wants to switch profiles)
+  // Profile click handlers
   document.getElementById('btn-profile-user')?.addEventListener('click', () => {
-    if (screen) { screen.classList.add('fade-out'); setTimeout(() => { screen.style.display = 'none'; }, 500); }
+    sessionStorage.setItem('profile', 'home');
+    if (profileScreen) {
+      profileScreen.classList.add('fade-out');
+      setTimeout(() => { profileScreen.style.display = 'none'; }, 500);
+    }
     loadHomeFeed();
   });
 
   document.getElementById('btn-profile-kids')?.addEventListener('click', () => {
-    if (screen) { screen.classList.add('fade-out'); setTimeout(() => { screen.style.display = 'none'; }, 500); }
+    sessionStorage.setItem('profile', 'kids');
+    if (profileScreen) {
+      profileScreen.classList.add('fade-out');
+      setTimeout(() => { profileScreen.style.display = 'none'; }, 500);
+    }
     loadKidsFeed();
   });
 
+  // Sign out
   document.getElementById('dd-signout')?.addEventListener('click', (e) => {
     e.preventDefault();
-    if (screen) { screen.style.display = ''; screen.classList.remove('fade-out'); }
+    sessionStorage.removeItem('profile');
+    if (profileScreen) {
+      profileScreen.style.display = '';
+      profileScreen.classList.remove('fade-out');
+    }
     toast('Signed out');
   });
 
-  document.getElementById('dd-switch-user')?.addEventListener('click', () => loadHomeFeed());
-  document.getElementById('dd-switch-kids')?.addEventListener('click', () => loadKidsFeed());
+  // Switches inside dropdown
+  document.getElementById('dd-switch-user')?.addEventListener('click', () => {
+    sessionStorage.setItem('profile', 'home');
+    loadHomeFeed();
+  });
+  document.getElementById('dd-switch-kids')?.addEventListener('click', () => {
+    sessionStorage.setItem('profile', 'kids');
+    loadKidsFeed();
+  });
 
-  initNavbar();
-
-  // Modal close
+  // Close modals
   document.getElementById('modal-close-btn')?.addEventListener('click', closeModal);
   document.getElementById('modal-backdrop')?.addEventListener('click', closeModal);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-  // Load home feed immediately
-  loadHomeFeed();
+  // Init nav elements
+  initNavbar();
 });
-

@@ -2,25 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Netflix - Watch TV Shows Online, Watch Movies Online</title>
   <meta name="description" content="Watch Netflix movies & TV shows online or stream right to your smart TV, game console, PC, Mac, mobile, tablet and more.">
   <link rel="shortcut icon" href="https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.ico" type="image/x-icon">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-  <link rel="stylesheet" href="style.min.css?v=4">
+  <link rel="stylesheet" href="style.min.css">
 </head>
 <body>
 
+  <!-- ===== LOADING SCREEN ===== -->
+  <div class="loading-screen" id="loading-screen">
+    <img class="loading-logo" src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" alt="Netflix">
+    <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+  </div>
+
   <!-- ===== WHO'S WATCHING PROFILE SCREEN ===== -->
-  <div id="profile-screen" class="profile-screen" style="display:none">
+  <div id="profile-screen" class="profile-screen">
     <div class="profile-screen-inner">
       <h1 class="profile-screen-title">Who's watching?</h1>
       <div class="profile-list">
         <div class="profile-item" id="btn-profile-user">
           <div class="profile-avatar">
-            <img src="https://i.pravatar.cc/150?img=11" alt="User 1">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt="User 1">
           </div>
           <span class="profile-name">User 1</span>
         </div>
@@ -42,17 +52,13 @@
   </div>
 
   <!-- ===== MAIN APP ===== -->
-  <div id="app" class="app visible">
+  <div id="app" class="app">
 
     <!-- NAVBAR -->
     <nav id="navbar" class="navbar">
       <div class="nav-left">
         <a href="#" class="nav-logo" id="logo-home">
-          <svg viewBox="0 0 111 30" class="netflix-logo" aria-hidden="true">
-            <g fill="#E50914">
-              <path d="M105.06 0l-6.94 17.99L91.18 0H82.1l11.37 28.41L82.3 56.2h8.97l6.93-17.81 6.94 17.81H114l-11.56-27.79L113.94 0h-8.88zM66.16 0v56.2h8.1V0h-8.1zM52.58 0v48.3L40.5 0h-9.83v56.2h8.1V7.9l12.08 48.3h9.83V0h-8.1zM26.68 0L14.8 27.95v.04L2.6 56.2H0v-56.2h8.06V40.4L18.64 14.2 14.2 0H26.68zM0 56.2h8.06V0H0v56.2z"/>
-            </g>
-          </svg>
+          <img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" alt="Netflix" class="netflix-logo">
         </a>
         <ul class="nav-links">
           <li><a href="#" class="nav-link active" id="link-home">Home</a></li>
@@ -78,11 +84,11 @@
           <span class="notif-dot"></span>
         </button>
         <div class="nav-profile-wrap" id="nav-profile-wrap">
-          <img id="nav-avatar" src="https://i.pravatar.cc/150?img=11" alt="Profile" class="nav-avatar">
+          <img id="nav-avatar" src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt="Profile" class="nav-avatar">
           <i class="fa-solid fa-caret-down nav-caret"></i>
           <div class="profile-dropdown">
             <ul>
-              <li class="dropdown-item" id="dd-switch-user"><img src="https://i.pravatar.cc/150?img=11" alt=""> User 1</li>
+              <li class="dropdown-item" id="dd-switch-user"><img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" alt=""> User 1</li>
               <li class="dropdown-item" id="dd-switch-kids"><i class="fa-solid fa-child-reaching"></i> Kids</li>
               <li class="dropdown-item divider-item"><hr></li>
               <li class="dropdown-item" id="dd-signout"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sign out of Netflix</li>
@@ -104,7 +110,7 @@
         </div>
         <div class="hero-content" id="hero-content">
           <div class="hero-badge" id="hero-badge" style="display:none">
-            <svg viewBox="0 0 111 30" class="hero-n-logo" aria-hidden="true">
+            <svg viewBox="0 0 114 56.2" class="hero-n-logo" aria-hidden="true">
               <g fill="#E50914"><path d="M105.06 0l-6.94 17.99L91.18 0H82.1l11.37 28.41L82.3 56.2h8.97l6.93-17.81 6.94 17.81H114l-11.56-27.79L113.94 0h-8.88zM66.16 0v56.2h8.1V0h-8.1zM52.58 0v48.3L40.5 0h-9.83v56.2h8.1V7.9l12.08 48.3h9.83V0h-8.1zM26.68 0L14.8 27.95v.04L2.6 56.2H0v-56.2h8.06V40.4L18.64 14.2 14.2 0H26.68zM0 56.2h8.06V0H0v56.2z"/></g>
             </svg>
             <span>ORIGINAL</span>
@@ -255,6 +261,6 @@
 
   </div><!-- /#app -->
 
-  <script src="app.min.js?v=4" defer></script>
+  <script src="app.min.js" defer></script>
 </body>
 </html>
